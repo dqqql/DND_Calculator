@@ -36,22 +36,32 @@ git clone <repository-url>
 cd dnd-combat
 ```
 
-2. **安装依赖**
+2. **一键启动** (推荐)
+
+**Windows用户:**
 ```bash
+# 双击运行批处理文件
+start.bat
+```
+
+**所有系统用户:**
+```bash
+# 使用Node.js启动脚本
+node start.js
+# 或使用npm命令
+npm start
+```
+
+**传统方式:**
+```bash
+# 手动安装依赖
 npm install
-# 或
-yarn install
-```
-
-3. **启动开发服务器**
-```bash
+# 启动开发服务器
 npm run dev
-# 或
-yarn dev
 ```
 
-4. **打开浏览器**
-访问 `http://localhost:5173` 开始使用
+3. **打开浏览器**
+一键启动会自动打开浏览器，或手动访问 `http://localhost:5173`
 
 ## 📖 使用指南
 
@@ -117,6 +127,9 @@ dnd-combat/
 ## 🔧 开发命令
 
 ```bash
+# 一键启动 (推荐)
+npm start
+
 # 开发模式
 npm run dev
 
@@ -129,6 +142,26 @@ npm run preview
 # 代码检查
 npm run lint
 ```
+
+## 🚀 快速启动
+
+项目提供了两种一键启动方式：
+
+### Windows 批处理启动
+- 双击 `start.bat` 文件
+- 自动检查环境和依赖
+- 自动打开浏览器
+
+### 跨平台 Node.js 启动  
+- 运行 `node start.js` 或 `npm start`
+- 支持 Windows/Mac/Linux
+- 自动检测系统并打开浏览器
+
+两种方式都会：
+- ✅ 自动检查 Node.js 环境
+- ✅ 自动安装依赖（首次运行）
+- ✅ 自动打开浏览器
+- ✅ 提供友好的中文提示
 
 ## 🤝 贡献指南
 
