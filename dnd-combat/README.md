@@ -1,16 +1,157 @@
-# React + Vite
+# D&D 5e 战斗数据工坊
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个专为D&D 5e设计的战斗数据分析和遭遇平衡工具，帮助DM快速计算队伍输出、怪物威胁度，优化游戏体验。
 
-Currently, two official plugins are available:
+## ✨ 功能特色
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🎯 队伍分析模式
+- **多玩家配置**: 支持最多6名玩家的详细数据输入
+- **实时DPR计算**: 自动计算每轮平均伤害输出
+- **优劣势支持**: 完整的优势/劣势机制计算
+- **智能推荐**: 基于队伍输出推荐合适的怪物血量
 
-## React Compiler
+### 👹 怪物分析模式  
+- **威胁评估**: 分析怪物对玩家的威胁程度
+- **秒杀风险**: 检测怪物是否能一击秒杀玩家
+- **命中率计算**: 精确的攻击命中概率分析
+- **伤害预测**: 预估怪物每轮输出和最大爆发
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🎲 核心算法
+- 基于D&D 5e官方规则的精确数学模型
+- 支持多种骰子类型 (d4, d6, d8, d10, d12, d20)
+- 优势/劣势状态的准确概率计算
+- 暴击机制完整实现
 
-## Expanding the ESLint configuration
+## 🚀 快速开始
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 环境要求
+- Node.js 16.0 或更高版本
+- npm 或 yarn 包管理器
+
+### 安装步骤
+
+1. **克隆项目**
+```bash
+git clone <repository-url>
+cd dnd-combat
+```
+
+2. **安装依赖**
+```bash
+npm install
+# 或
+yarn install
+```
+
+3. **启动开发服务器**
+```bash
+npm run dev
+# 或
+yarn dev
+```
+
+4. **打开浏览器**
+访问 `http://localhost:5173` 开始使用
+
+## 📖 使用指南
+
+### 队伍分析
+1. 选择"分析队伍"模式
+2. 设置目标怪物的AC值
+3. 为每个玩家配置：
+   - 攻击加值
+   - 伤害骰子 (数量/面数)
+   - 固定伤害加值
+   - 每轮攻击次数
+   - 优势状态
+4. 查看实时计算的队伍总DPR
+5. 参考推荐的怪物血量范围
+
+### 怪物分析
+1. 选择"分析怪物"模式
+2. 配置怪物数据：
+   - 攻击加值
+   - 伤害公式
+   - 每轮攻击次数
+   - 优势状态
+3. 设置目标玩家的AC和等级
+4. 查看威胁评估和秒杀风险
+
+## 🛠️ 技术栈
+
+- **前端框架**: React 19.2.0
+- **构建工具**: Vite 7.2.4
+- **样式框架**: Tailwind CSS 3.4.17
+- **图标库**: Lucide React 0.562.0
+- **代码规范**: ESLint
+
+## 📁 项目结构
+
+```
+dnd-combat/
+├── src/
+│   ├── App.jsx          # 主应用组件
+│   ├── App.css          # 应用样式
+│   ├── main.jsx         # 应用入口
+│   ├── index.css        # 全局样式
+│   └── assets/          # 静态资源
+├── public/              # 公共文件
+├── package.json         # 项目配置
+├── vite.config.js       # Vite配置
+├── tailwind.config.js   # Tailwind配置
+└── README.md           # 项目文档
+```
+
+## 🎮 使用场景
+
+### 适合DM使用
+- **遭遇设计**: 根据队伍实力设计合适难度的战斗
+- **怪物调整**: 快速调整怪物数据以平衡战斗
+- **威胁评估**: 预判怪物对队伍的威胁程度
+
+### 适合玩家使用
+- **角色优化**: 分析不同装备和技能的输出效果
+- **战术规划**: 计算优势/劣势对战斗的影响
+- **数据对比**: 比较不同角色构建的效果
+
+## 🔧 开发命令
+
+```bash
+# 开发模式
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 预览构建结果
+npm run preview
+
+# 代码检查
+npm run lint
+```
+
+## 🤝 贡献指南
+
+欢迎提交Issue和Pull Request来改进这个工具！
+
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 🎯 未来计划
+
+- [ ] 添加更多职业和种族的预设模板
+- [ ] 支持法术伤害计算
+- [ ] 集成官方怪物数据库
+- [ ] 添加战斗轮次模拟器
+- [ ] 支持自定义规则变体
+
+---
+
+**Made with ❤️ for the D&D community**
