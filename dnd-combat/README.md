@@ -24,6 +24,24 @@
 
 ## 🚀 快速开始
 
+### 💻 桌面应用版本 (推荐)
+
+**直接下载使用:**
+1. 从 [Releases](../../releases) 页面下载最新版本
+2. 运行 `DND战斗计算器 Setup 1.0.0.exe` 安装
+3. 或解压 `DND战斗计算器-1.0.0-win.zip` 直接运行
+
+**自行构建桌面版:**
+```bash
+# 一键构建exe安装包
+build.bat
+
+# 或使用npm命令
+npm run build:exe
+```
+
+### 🌐 Web版本
+
 ### 环境要求
 - Node.js 16.0 或更高版本
 - npm 或 yarn 包管理器
@@ -91,6 +109,8 @@ npm run dev
 
 - **前端框架**: React 19.2.0
 - **构建工具**: Vite 7.2.4
+- **桌面应用**: Electron 40.0.0
+- **打包工具**: Electron Builder 26.4.0
 - **样式框架**: Tailwind CSS 3.4.17
 - **图标库**: Lucide React 0.562.0
 - **代码规范**: ESLint
@@ -106,6 +126,11 @@ dnd-combat/
 │   ├── index.css        # 全局样式
 │   └── assets/          # 静态资源
 ├── public/              # 公共文件
+├── release/             # 构建输出 (exe安装包)
+├── main.js              # Electron主进程
+├── build.bat            # 一键构建脚本
+├── start.bat            # 一键启动脚本
+├── start.js             # 跨平台启动脚本
 ├── package.json         # 项目配置
 ├── vite.config.js       # Vite配置
 ├── tailwind.config.js   # Tailwind配置
@@ -136,32 +161,63 @@ npm run dev
 # 构建生产版本
 npm run build
 
+# 构建桌面应用
+npm run build:exe
+
+# 完整构建 (Web + 桌面)
+npm run dist
+
 # 预览构建结果
 npm run preview
 
 # 代码检查
 npm run lint
+
+# 运行Electron (需要先构建)
+npm run electron
 ```
 
 ## 🚀 快速启动
 
-项目提供了两种一键启动方式：
+项目提供了多种启动方式：
 
-### Windows 批处理启动
+### 💻 桌面应用启动
+- 下载并安装exe版本，双击桌面图标启动
+- 无需浏览器，独立运行
+- 更好的性能和用户体验
+
+### 🌐 Web版本启动
+
+#### Windows 批处理启动
 - 双击 `start.bat` 文件
 - 自动检查环境和依赖
 - 自动打开浏览器
 
-### 跨平台 Node.js 启动  
+#### 跨平台 Node.js 启动  
 - 运行 `node start.js` 或 `npm start`
 - 支持 Windows/Mac/Linux
 - 自动检测系统并打开浏览器
 
-两种方式都会：
+两种Web启动方式都会：
 - ✅ 自动检查 Node.js 环境
 - ✅ 自动安装依赖（首次运行）
 - ✅ 自动打开浏览器
 - ✅ 提供友好的中文提示
+
+### 🔨 构建桌面应用
+
+#### 一键构建
+```bash
+# Windows用户 - 双击运行
+build.bat
+
+# 所有系统用户
+npm run build:exe
+```
+
+构建完成后，在 `release/` 文件夹中可以找到：
+- `DND战斗计算器 Setup 1.0.0.exe` - 安装包版本
+- `DND战斗计算器-1.0.0-win.zip` - 便携版本
 
 ## 🤝 贡献指南
 
