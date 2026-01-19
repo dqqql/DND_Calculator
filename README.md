@@ -2,7 +2,8 @@
 
 一个专为D&D 5e设计的战斗数据分析和遭遇平衡工具，帮助DM快速计算队伍输出、怪物威胁度，优化游戏体验。
 <img width="1482" height="953" alt="image" src="https://github.com/user-attachments/assets/86caef0e-e042-4a02-84fb-18576f168175" />
-<img width="1482" height="953" alt="image" src="https://github.com/user-attachments/assets/a98b7462-ade8-4f3a-8005-6f373f0b7f42" />
+<img width="1482" height="953" alt="image" src="https://github.com/user-attachments/assets/e7fc5d97-13e0-46d6-bc0e-d7890d9af997" />
+
 
 ## ✨ 功能特色
 
