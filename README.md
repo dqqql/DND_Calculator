@@ -2,8 +2,9 @@
 
 一个专为D&D 5e设计的战斗数据分析和遭遇平衡工具，帮助DM快速计算队伍输出、怪物威胁度，优化游戏体验。现已集成蒙特卡洛模拟引擎，提供更精确的战斗预测！
 
-<img width="1482" height="953" alt="image" src="https://github.com/user-attachments/assets/86caef0e-e042-4a02-84fb-18576f168175" />
-<img width="1482" height="953" alt="image" src="https://github.com/user-attachments/assets/e7fc5d97-13e0-46d6-bc0e-d7890d9af997" />
+<img width="1484" height="877" alt="image" src="https://github.com/user-attachments/assets/4e7b6f78-bb25-4d06-865d-fc717e0edb08" />
+<img width="1472" height="868" alt="image" src="https://github.com/user-attachments/assets/ade585ba-f273-43b9-88c3-0f423ac7e9d0" />
+
 
 ## ✨ 功能特色
 
