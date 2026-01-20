@@ -86,6 +86,10 @@ class DndCombatSimulator:
         team_a_wins = 0
         total_rounds = 0
         
+        # 新增：伤害统计累加器
+        grand_total_damage_a = 0 # 玩家造成的总伤害
+        grand_total_damage_b = 0 # 怪物造成的总伤害
+        
         # 预计算总血量
         initial_hp_a = sum([u.get('hp', 10) for u in team_a])
         initial_hp_b = sum([u.get('hp', 10) for u in team_b])
@@ -115,6 +119,7 @@ class DndCombatSimulator:
                 for unit in team_a:
                     dmg_to_b += self.resolve_one_attack(unit, target_ac_b, target_save_b)
                 hp_b -= dmg_to_b
+                grand_total_damage_a += dmg_to_b # 累加玩家本轮伤害
                 
                 if hp_b <= 0:
                     team_a_wins += 1
@@ -125,14 +130,23 @@ class DndCombatSimulator:
                 for unit in team_b:
                     dmg_to_a += self.resolve_one_attack(unit, target_ac_a, target_save_a)
                 hp_a -= dmg_to_a
+                grand_total_damage_b += dmg_to_a # 累加怪物本轮伤害
             
             total_rounds += rounds
 
         end_time = time.time()
         
+        # 计算平均值
+        avg_rounds = total_rounds / iterations
+        
         return {
             "win_rate": (team_a_wins / iterations) * 100,
-            "avg_rounds": total_rounds / iterations,
+            "avg_rounds": avg_rounds,
+            # 新增返回数据
+            "avg_total_damage_a": grand_total_damage_a / iterations, # 玩家场均总伤
+            "avg_total_damage_b": grand_total_damage_b / iterations, # 怪物场均总伤
+            "avg_dpr_a": grand_total_damage_a / total_rounds if total_rounds > 0 else 0, # 玩家实战DPR
+            "avg_dpr_b": grand_total_damage_b / total_rounds if total_rounds > 0 else 0, # 怪物实战DPR
             "iterations": iterations,
             "duration": end_time - start_time
         }

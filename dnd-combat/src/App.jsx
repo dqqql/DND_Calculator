@@ -171,6 +171,34 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
                    <div className={`text-xl font-bold ${(100 - result.win_rate) > 50 ? 'text-red-400' : 'text-green-400'}`}>{(100 - result.win_rate).toFixed(1)}%</div>
                  </div>
               </div>
+
+              {/* 新增：详细伤害统计面板 */}
+              <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 p-3">
+                <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700">
+                  <div className="text-center space-y-1">
+                    <div className="text-amber-400 font-bold text-xs uppercase mb-2">玩家队伍表现</div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>场均总伤:</span>
+                      <span className="text-white font-mono">{result.avg_total_damage_a.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>实战 DPR:</span>
+                      <span className="text-white font-mono">{result.avg_dpr_a.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <div className="text-red-400 font-bold text-xs uppercase mb-2">怪物队伍表现</div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>场均总伤:</span>
+                      <span className="text-white font-mono">{result.avg_total_damage_b.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>实战 DPR:</span>
+                      <span className="text-white font-mono">{result.avg_dpr_b.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div className="flex justify-center">
                 <button onClick={runSimulation} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><PlayCircle className="w-3 h-3"/> 再次模拟</button>
