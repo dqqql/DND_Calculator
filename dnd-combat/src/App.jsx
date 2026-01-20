@@ -1,36 +1,213 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink } from 'lucide-react';
 
+// --- 核心算法 (移至组件外，作为纯函数) ---
+const calculateStats = (params, targetStats) => {
+  const { 
+    attackType, attackBonus, saveDC, halfOnSave, 
+    diceCount, diceType, damageMod, attacksPerRound, advantageState 
+  } = params;
+  
+  const { ac, saveBonus } = targetStats;
+
+  let hitChance = 0;
+  let critChance = 0;
+
+  if (attackType === 'attack') {
+    const neededRoll = ac - attackBonus;
+    let rawHitChance = Math.max(0.05, Math.min(0.95, (21 - neededRoll) / 20));
+    hitChance = rawHitChance;
+    if (advantageState === 'advantage') hitChance = 1 - Math.pow(1 - rawHitChance, 2);
+    else if (advantageState === 'disadvantage') hitChance = Math.pow(rawHitChance, 2);
+    critChance = advantageState === 'advantage' ? 0.0975 : (advantageState === 'disadvantage' ? 0.0025 : 0.05);
+  } else {
+    const rawSaveChance = Math.min(1.0, Math.max(0.0, (21 + (saveBonus || 0) - saveDC) / 20));
+    const failChance = 1 - rawSaveChance;
+    critChance = 0;
+    hitChance = halfOnSave ? failChance + (rawSaveChance * 0.5) : failChance;
+  }
+
+  const diceAvg = diceCount * ((diceType + 1) / 2);
+  const dpr = ((hitChance * (diceAvg + damageMod)) + (critChance * diceAvg)) * attacksPerRound;
+  const maxDamage = ((diceCount * diceType) + damageMod); 
+
+  return { dpr, maxDamage };
+};
+
+// --- 骰子计算器组件 (移至组件外) ---
+const DiceCalculator = ({ onClose }) => {
+  const [dCount, setDCount] = useState(1);
+  const [dType, setDType] = useState(8);
+  const [dMod, setDMod] = useState(0);
+  const avg = (dCount * (dType + 1) / 2) + dMod;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+          <h3 className="text-amber-400 font-bold flex items-center gap-2"><Calculator className="w-5 h-5"/> 骰子均值计算器</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-center gap-2">
+            <input type="number" min="1" value={dCount} onChange={e=>setDCount(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
+            <span className="text-slate-500 font-bold">d</span>
+            <select value={dType} onChange={e=>setDType(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded p-2 text-lg font-bold outline-none focus:border-amber-500">
+              {[4,6,8,10,12,20,100].map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <span className="text-slate-500 font-bold">+</span>
+            <input type="number" value={dMod} onChange={e=>setDMod(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
+          </div>
+          <div className="text-center p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+            <div className="text-slate-400 text-sm uppercase font-bold mb-1">平均值 (Average)</div>
+            <div className="text-4xl font-bold text-white">{avg.toFixed(1)}</div>
+            <div className="text-xs text-slate-500 mt-2">范围: {dCount + dMod} - {(dCount * dType) + dMod}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 通用输入卡片组件 (移至组件外) ---
+const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats }) => {
+  return (
+    <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
+      {/* Boss 标记 */}
+      {item.attacksPerRound > 1 && item.isBoss && (
+        <div className="absolute top-0 right-0 bg-red-900/50 text-red-300 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-red-800 flex items-center gap-1 z-10">
+          <Zap className="w-3 h-3" /> x{item.attacksPerRound}
+        </div>
+      )}
+
+      {/* 头部：名字与核心操作 */}
+      <div className={`p-3 border-b flex flex-wrap gap-2 justify-between items-center ${item.isBoss ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
+        <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+          <span className="bg-slate-700 text-slate-400 text-xs px-1.5 py-0.5 rounded font-mono">{index + 1}</span>
+          <input type="text" value={item.name} onChange={(e) => updateFunc(item.id, 'name', e.target.value)} className="bg-transparent border-none text-sm font-bold text-slate-200 focus:ring-0 w-24 placeholder-slate-600" />
+          
+          {isMonster && (
+            <button onClick={() => updateFunc(item.id, 'isBoss', !item.isBoss)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all ${item.isBoss ? 'bg-amber-500 text-slate-900 border-amber-400' : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
+              <Crown className="w-3 h-3" fill={item.isBoss ? "currentColor" : "none"} /> {item.isBoss ? "BOSS" : "普通"}
+            </button>
+          )}
+
+          <div className="flex bg-slate-900 rounded p-0.5 border border-slate-700">
+            <button onClick={() => updateFunc(item.id, 'attackType', 'attack')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'attack' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>物理</button>
+            <button onClick={() => updateFunc(item.id, 'attackType', 'save')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'save' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>法术</button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+           <span className="text-xs text-slate-500 font-mono">DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>
+             {calculateStats(item, targetStats).dpr.toFixed(1)}
+           </span></span>
+           {showDelete && <button onClick={() => removeFunc(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}
+        </div>
+      </div>
+
+      {/* 核心数据配置 */}
+      <div className="p-3 space-y-3">
+        {/* 第一行：防御属性配置 */}
+        <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+          <div className="flex items-center gap-1">
+            <Shield className="w-3 h-3 text-slate-500"/>
+            <label className="text-[10px] text-slate-400">AC</label>
+            <input type="number" value={item.ac || 10} onChange={(e) => updateFunc(item.id, 'ac', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
+          </div>
+          <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
+            <div className="text-[10px] text-slate-400 font-bold">HP</div>
+            <input type="number" value={item.hp || 10} onChange={(e) => updateFunc(item.id, 'hp', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
+          </div>
+          <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
+            <div className="text-[10px] text-slate-400">Save+</div>
+            <input type="number" value={item.saveBonus || 0} onChange={(e) => updateFunc(item.id, 'saveBonus', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
+          </div>
+        </div>
+
+        {/* 第二行：攻击数据 */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="col-span-1">
+            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">{item.attackType === 'attack' ? '命中加值' : '法术 DC'}</label>
+            {item.attackType === 'attack' ? (
+              <input type="number" value={item.attackBonus} onChange={(e) => updateFunc(item.id, 'attackBonus', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
+            ) : (
+              <input type="number" value={item.saveDC} onChange={(e) => updateFunc(item.id, 'saveDC', Number(e.target.value))} className="w-full bg-indigo-900/30 border border-indigo-500/50 text-indigo-200 rounded px-2 py-1.5 text-sm outline-none focus:border-indigo-500" />
+            )}
+          </div>
+          <div className="col-span-2">
+            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">伤害骰</label>
+            <div className="flex gap-1">
+              <input type="number" min="1" value={item.diceCount} onChange={(e) => updateFunc(item.id, 'diceCount', Math.max(1, Number(e.target.value)))} className={`w-1/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-center text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
+              <select value={item.diceType} onChange={(e) => updateFunc(item.id, 'diceType', Number(e.target.value))} className={`w-2/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500 text-center`}>
+                <option value="4">d4</option><option value="6">d6</option><option value="8">d8</option><option value="10">d10</option><option value="12">d12</option><option value="20">d20</option>
+              </select>
+            </div>
+          </div>
+          <div className="col-span-1">
+            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">固定伤</label>
+            <input type="number" value={item.damageMod} onChange={(e) => updateFunc(item.id, 'damageMod', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
+          </div>
+        </div>
+
+        {/* 第三行：状态选项 */}
+        <div className="border-t border-slate-700/50 pt-2 flex items-center gap-3">
+          <div className="flex-1">
+            {item.attackType === 'attack' ? (
+              <div className="flex gap-1">
+                {['normal', 'advantage', 'disadvantage'].map(state => (
+                  <button key={state} onClick={() => updateFunc(item.id, 'advantageState', state)} className={`flex-1 py-1 text-[10px] rounded border ${item.advantageState === state 
+                    ? (state === 'normal' ? 'bg-slate-700 border-slate-500' : state === 'advantage' ? 'bg-green-900/40 text-green-400 border-green-600' : 'bg-red-900/40 text-red-400 border-red-600') 
+                    : 'bg-slate-900 text-slate-500 border-slate-700'}`}>
+                    {state === 'normal' ? '正常' : state === 'advantage' ? '优势' : '劣势'}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={item.halfOnSave} onChange={(e) => updateFunc(item.id, 'halfOnSave', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500"/>
+                <span className="text-xs text-indigo-200">豁免成功半伤</span>
+              </label>
+            )}
+          </div>
+          {(!isMonster || item.isBoss) && (
+            <div className="flex items-center gap-1 bg-slate-900/50 rounded border border-slate-600 px-2 py-0.5">
+              <span className="text-[10px] text-slate-400">{item.attackType === 'attack' ? '攻击' : '施法'}:</span>
+              <input type="number" min="1" value={item.attacksPerRound} onChange={(e) => updateFunc(item.id, 'attacksPerRound', Math.max(1, Number(e.target.value)))} className="w-8 bg-transparent text-center text-xs font-bold text-white outline-none border-b border-slate-500 focus:border-white" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DndCombatCalculator = () => {
   const [mode, setMode] = useState('player_analysis');
   const [showDiceTool, setShowDiceTool] = useState(false);
   
-  // --- 新增：联动开关 ---
+  // --- 联动开关 ---
   const [isLinked, setIsLinked] = useState(false);
 
-  // --- 玩家数据 (新增 ac, hp, saveBonus 字段) ---
+  // --- 玩家数据 ---
   const [players, setPlayers] = useState([
     { 
       id: 1, name: '法师', 
-      // 攻击属性
       attackType: 'save', attackBonus: 7, saveDC: 15, halfOnSave: true,
       diceCount: 8, diceType: 6, damageMod: 0, attacksPerRound: 1, advantageState: 'normal',
-      // 防御属性 (新)
       ac: 12, hp: 40, saveBonus: 2
     }
   ]);
   
-  // 只有在非联动模式下，这些手动输入的全局数值才生效
   const [manualMonsterAC, setManualMonsterAC] = useState(15);
   const [manualMonsterSaveBonus, setManualMonsterSaveBonus] = useState(2);
 
-  // --- 怪物数据 (新增 ac, hp, saveBonus 字段) ---
+  // --- 怪物数据 ---
   const [monsters, setMonsters] = useState([
     { 
       id: 1, name: '地精首领', 
       attackType: 'attack', attackBonus: 5, saveDC: 13, halfOnSave: false,
       diceCount: 1, diceType: 8, damageMod: 3, attacksPerRound: 2, advantageState: 'normal', isBoss: true,
-      // 防御属性 (新)
       ac: 15, hp: 45, saveBonus: 1
     }
   ]);
@@ -39,15 +216,14 @@ const DndCombatCalculator = () => {
   const [manualTargetPlayerSaveBonus, setManualTargetPlayerSaveBonus] = useState(3);
   const [manualTargetPlayerHP, setManualTargetPlayerHP] = useState(25);
 
-  // --- 动态计算的对抗数值 ---
+  // --- 动态计算 ---
   const [activeMonsterStats, setActiveMonsterStats] = useState({ ac: 15, saveBonus: 2, totalHP: 45 });
   const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 3, totalHP: 25 });
 
-  // --- 计算结果 ---
   const [partyTotalDPR, setPartyTotalDPR] = useState(0);
   const [encounterStats, setEncounterStats] = useState({ totalDPR: 0, highestMaxDamage: 0, bossName: '' });
 
-  // --- 存档功能 ---
+  // --- 存档 ---
   const fileInputRef = useRef(null);
 
   const handleSave = () => {
@@ -78,56 +254,20 @@ const DndCombatCalculator = () => {
     reader.readAsText(file);
   };
 
-  // --- 核心算法 ---
-  const calculateStats = (params, targetStats) => {
-    const { 
-      attackType, attackBonus, saveDC, halfOnSave, 
-      diceCount, diceType, damageMod, attacksPerRound, advantageState 
-    } = params;
-    
-    const { ac, saveBonus } = targetStats;
-
-    let hitChance = 0;
-    let critChance = 0;
-
-    if (attackType === 'attack') {
-      const neededRoll = ac - attackBonus;
-      let rawHitChance = Math.max(0.05, Math.min(0.95, (21 - neededRoll) / 20));
-      hitChance = rawHitChance;
-      if (advantageState === 'advantage') hitChance = 1 - Math.pow(1 - rawHitChance, 2);
-      else if (advantageState === 'disadvantage') hitChance = Math.pow(rawHitChance, 2);
-      critChance = advantageState === 'advantage' ? 0.0975 : (advantageState === 'disadvantage' ? 0.0025 : 0.05);
-    } else {
-      const rawSaveChance = Math.min(1.0, Math.max(0.0, (21 + saveBonus - saveDC) / 20));
-      const failChance = 1 - rawSaveChance;
-      critChance = 0;
-      hitChance = halfOnSave ? failChance + (rawSaveChance * 0.5) : failChance;
-    }
-
-    const diceAvg = diceCount * ((diceType + 1) / 2);
-    const dpr = ((hitChance * (diceAvg + damageMod)) + (critChance * diceAvg)) * attacksPerRound;
-    const maxDamage = ((diceCount * diceType) + damageMod); 
-
-    return { dpr, maxDamage };
-  };
-
-  // --- Effect: 联动逻辑与数值更新 ---
+  // --- Effect: 联动逻辑 ---
   useEffect(() => {
-    // 1. 计算双方的平均防御属性 (用于联动)
-    // 玩家方平均
+    // 计算平均值
     const pAC = players.reduce((sum, p) => sum + (p.ac || 10), 0) / players.length;
     const pSave = players.reduce((sum, p) => sum + (p.saveBonus || 0), 0) / players.length;
     const pTotalHP = players.reduce((sum, p) => sum + (p.hp || 10), 0);
     
-    // 怪物方平均
     const mAC = monsters.reduce((sum, m) => sum + (m.ac || 10), 0) / monsters.length;
     const mSave = monsters.reduce((sum, m) => sum + (m.saveBonus || 0), 0) / monsters.length;
     const mTotalHP = monsters.reduce((sum, m) => sum + (m.hp || 10), 0);
 
-    // 2. 决定使用哪套数值 (联动 vs 手动)
     const currentMonsterTarget = isLinked 
       ? { ac: Math.round(mAC), saveBonus: Math.round(mSave), totalHP: mTotalHP } 
-      : { ac: manualMonsterAC, saveBonus: manualMonsterSaveBonus, totalHP: 0 }; // 非联动时HP无意义
+      : { ac: manualMonsterAC, saveBonus: manualMonsterSaveBonus, totalHP: 0 }; 
 
     const currentPlayerTarget = isLinked
       ? { ac: Math.round(pAC), saveBonus: Math.round(pSave), totalHP: pTotalHP }
@@ -136,7 +276,6 @@ const DndCombatCalculator = () => {
     setActiveMonsterStats(currentMonsterTarget);
     setActivePlayerStats(currentPlayerTarget);
 
-    // 3. 计算 DPR
     const pTotalDPR = players.reduce((acc, p) => acc + calculateStats(p, currentMonsterTarget).dpr, 0);
     setPartyTotalDPR(pTotalDPR);
 
@@ -154,7 +293,6 @@ const DndCombatCalculator = () => {
     setEncounterStats({ totalDPR: mTotalDPR, highestMaxDamage: highestMax, bossName: boss });
 
   }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerSaveBonus, manualTargetPlayerHP]);
-
 
   // --- CRUD 操作 ---
   const updateItem = (setFunc, list, id, field, value) => {
@@ -174,162 +312,16 @@ const DndCombatCalculator = () => {
       id: Date.now(), name: `${prefix} ${list.length + 1}`, 
       attackType: defaultType, attackBonus: 5, saveDC: 13, halfOnSave: false,
       diceCount: 1, diceType: 8, damageMod: 3, attacksPerRound: 1, advantageState: 'normal',
-      ac: 13, hp: 30, saveBonus: 2 // 默认防御属性
+      ac: 13, hp: 30, saveBonus: 2 
     }]);
   };
 
   const removeItem = (setFunc, list, id) => list.length > 1 && setFunc(list.filter(i => i.id !== id));
 
-  // --- 组件 ---
-  const DiceCalculator = () => { /* ...省略，保持不变... */
-    const [dCount, setDCount] = useState(1);
-    const [dType, setDType] = useState(8);
-    const [dMod, setDMod] = useState(0);
-    const avg = (dCount * (dType + 1) / 2) + dMod;
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden">
-          <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
-            <h3 className="text-amber-400 font-bold flex items-center gap-2"><Calculator className="w-5 h-5"/> 骰子均值计算器</h3>
-            <button onClick={() => setShowDiceTool(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
-          </div>
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-center gap-2">
-              <input type="number" min="1" value={dCount} onChange={e=>setDCount(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
-              <span className="text-slate-500 font-bold">d</span>
-              <select value={dType} onChange={e=>setDType(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded p-2 text-lg font-bold outline-none focus:border-amber-500">
-                {[4,6,8,10,12,20,100].map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <span className="text-slate-500 font-bold">+</span>
-              <input type="number" value={dMod} onChange={e=>setDMod(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
-            </div>
-            <div className="text-center p-4 bg-slate-900/50 rounded-lg border border-slate-700">
-              <div className="text-slate-400 text-sm uppercase font-bold mb-1">平均值 (Average)</div>
-              <div className="text-4xl font-bold text-white">{avg.toFixed(1)}</div>
-              <div className="text-xs text-slate-500 mt-2">范围: {dCount + dMod} - {(dCount * dType) + dMod}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats }) => {
-    return (
-      <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
-        {/* Boss 标记 */}
-        {item.attacksPerRound > 1 && item.isBoss && (
-          <div className="absolute top-0 right-0 bg-red-900/50 text-red-300 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-red-800 flex items-center gap-1 z-10">
-            <Zap className="w-3 h-3" /> x{item.attacksPerRound}
-          </div>
-        )}
-
-        {/* 头部：名字与核心操作 */}
-        <div className={`p-3 border-b flex flex-wrap gap-2 justify-between items-center ${item.isBoss ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
-          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-            <span className="bg-slate-700 text-slate-400 text-xs px-1.5 py-0.5 rounded font-mono">{index + 1}</span>
-            <input type="text" value={item.name} onChange={(e) => updateFunc(item.id, 'name', e.target.value)} className="bg-transparent border-none text-sm font-bold text-slate-200 focus:ring-0 w-24 placeholder-slate-600" />
-            
-            {isMonster && (
-              <button onClick={() => updateFunc(item.id, 'isBoss', !item.isBoss)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all ${item.isBoss ? 'bg-amber-500 text-slate-900 border-amber-400' : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
-                <Crown className="w-3 h-3" fill={item.isBoss ? "currentColor" : "none"} /> {item.isBoss ? "BOSS" : "普通"}
-              </button>
-            )}
-
-            <div className="flex bg-slate-900 rounded p-0.5 border border-slate-700">
-              <button onClick={() => updateFunc(item.id, 'attackType', 'attack')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'attack' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>物理</button>
-              <button onClick={() => updateFunc(item.id, 'attackType', 'save')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'save' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>法术</button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-             <span className="text-xs text-slate-500 font-mono">DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>
-               {calculateStats(item, targetStats).dpr.toFixed(1)}
-             </span></span>
-             {showDelete && <button onClick={() => removeFunc(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}
-          </div>
-        </div>
-
-        {/* 核心数据配置 */}
-        <div className="p-3 space-y-3">
-          {/* 第一行：防御属性配置 (新) */}
-          <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
-            <div className="flex items-center gap-1">
-              <Shield className="w-3 h-3 text-slate-500"/>
-              <label className="text-[10px] text-slate-400">AC</label>
-              <input type="number" value={item.ac || 10} onChange={(e) => updateFunc(item.id, 'ac', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-            </div>
-            <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
-              <div className="text-[10px] text-slate-400 font-bold">HP</div>
-              <input type="number" value={item.hp || 10} onChange={(e) => updateFunc(item.id, 'hp', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-            </div>
-            <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
-              <div className="text-[10px] text-slate-400">Save+</div>
-              <input type="number" value={item.saveBonus || 0} onChange={(e) => updateFunc(item.id, 'saveBonus', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-            </div>
-          </div>
-
-          {/* 第二行：攻击数据 */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="col-span-1">
-              <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">{item.attackType === 'attack' ? '命中加值' : '法术 DC'}</label>
-              {item.attackType === 'attack' ? (
-                <input type="number" value={item.attackBonus} onChange={(e) => updateFunc(item.id, 'attackBonus', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-              ) : (
-                <input type="number" value={item.saveDC} onChange={(e) => updateFunc(item.id, 'saveDC', Number(e.target.value))} className="w-full bg-indigo-900/30 border border-indigo-500/50 text-indigo-200 rounded px-2 py-1.5 text-sm outline-none focus:border-indigo-500" />
-              )}
-            </div>
-            <div className="col-span-2">
-              <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">伤害骰</label>
-              <div className="flex gap-1">
-                <input type="number" min="1" value={item.diceCount} onChange={(e) => updateFunc(item.id, 'diceCount', Math.max(1, Number(e.target.value)))} className={`w-1/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-center text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-                <select value={item.diceType} onChange={(e) => updateFunc(item.id, 'diceType', Number(e.target.value))} className={`w-2/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500 text-center`}>
-                  <option value="4">d4</option><option value="6">d6</option><option value="8">d8</option><option value="10">d10</option><option value="12">d12</option><option value="20">d20</option>
-                </select>
-              </div>
-            </div>
-            <div className="col-span-1">
-              <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">固定伤</label>
-              <input type="number" value={item.damageMod} onChange={(e) => updateFunc(item.id, 'damageMod', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-            </div>
-          </div>
-
-          {/* 第三行：状态选项 */}
-          <div className="border-t border-slate-700/50 pt-2 flex items-center gap-3">
-            <div className="flex-1">
-              {item.attackType === 'attack' ? (
-                <div className="flex gap-1">
-                  {['normal', 'advantage', 'disadvantage'].map(state => (
-                    <button key={state} onClick={() => updateFunc(item.id, 'advantageState', state)} className={`flex-1 py-1 text-[10px] rounded border ${item.advantageState === state 
-                      ? (state === 'normal' ? 'bg-slate-700 border-slate-500' : state === 'advantage' ? 'bg-green-900/40 text-green-400 border-green-600' : 'bg-red-900/40 text-red-400 border-red-600') 
-                      : 'bg-slate-900 text-slate-500 border-slate-700'}`}>
-                      {state === 'normal' ? '正常' : state === 'advantage' ? '优势' : '劣势'}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" checked={item.halfOnSave} onChange={(e) => updateFunc(item.id, 'halfOnSave', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500"/>
-                  <span className="text-xs text-indigo-200">豁免成功半伤</span>
-                </label>
-              )}
-            </div>
-            {(!isMonster || item.isBoss) && (
-              <div className="flex items-center gap-1 bg-slate-900/50 rounded border border-slate-600 px-2 py-0.5">
-                <span className="text-[10px] text-slate-400">{item.attackType === 'attack' ? '攻击' : '施法'}:</span>
-                <input type="number" min="1" value={item.attacksPerRound} onChange={(e) => updateFunc(item.id, 'attacksPerRound', Math.max(1, Number(e.target.value)))} className="w-8 bg-transparent text-center text-xs font-bold text-white outline-none border-b border-slate-500 focus:border-white" />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-10">
       {/* 弹窗 & 隐藏文件输入 */}
-      {showDiceTool && <DiceCalculator />}
+      {showDiceTool && <DiceCalculator onClose={() => setShowDiceTool(false)} />}
       <input type="file" ref={fileInputRef} onChange={handleLoad} className="hidden" accept=".json" />
 
       {/* 顶部导航 */}
@@ -482,7 +474,6 @@ const DndCombatCalculator = () => {
                    <span>vs 豁免 +{activeMonsterStats.saveBonus}</span>
                  </div>
               </div>
-              {/* ...推荐怪物血量 (不变)... */}
               <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden">
                 <div className="bg-amber-900/20 p-4 border-b border-slate-700 flex items-center gap-2"><Info className="text-amber-500 w-5 h-5"/><h3 className="font-bold text-slate-100">推荐怪物血量 (HP)</h3></div>
                 <div className="p-4 space-y-3">
@@ -503,7 +494,6 @@ const DndCombatCalculator = () => {
                    <span className="bg-red-950 px-2 py-0.5 rounded text-red-300 border border-red-900">{monsters.length} 只怪物</span>
                  </div>
               </div>
-               {/* 威胁评估 */}
                <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden">
                   <div className="bg-red-900/20 p-4 border-b border-slate-700 flex items-center gap-2"><AlertTriangle className="text-red-500 w-5 h-5"/><h3 className="font-bold text-slate-100">威胁评估</h3></div>
                   <div className="p-5 space-y-6">
