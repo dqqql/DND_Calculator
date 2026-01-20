@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink } from 'lucide-react';
+import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink, Server, PlayCircle, Loader2 } from 'lucide-react';
 
-// --- 核心算法 (移至组件外，作为纯函数) ---
+// --- 核心算法 (本地纯函数) ---
 const calculateStats = (params, targetStats) => {
+  // ... (保持原有的本地计算逻辑不变，用于快速预览) ...
   const { 
     attackType, attackBonus, saveDC, halfOnSave, 
     diceCount, diceType, damageMod, attacksPerRound, advantageState 
@@ -34,7 +35,101 @@ const calculateStats = (params, targetStats) => {
   return { dpr, maxDamage };
 };
 
-// --- 骰子计算器组件 (移至组件外) ---
+// --- 蒙特卡洛模拟结果弹窗 (新组件) ---
+const SimulationModal = ({ onClose, simData }) => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [iterations, setIterations] = useState(100000);
+
+  const runSimulation = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...simData, iterations }),
+      });
+
+      if (!response.ok) throw new Error('无法连接到 Python 后端');
+      
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setError("连接失败：请确保 dnd_monte_carlo.py 已运行");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 打开弹窗自动运行一次
+  useEffect(() => {
+    runSimulation();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+          <h3 className="text-purple-400 font-bold flex items-center gap-2"><Server className="w-5 h-5"/> 蒙特卡洛模拟 (Python)</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+        </div>
+        
+        <div className="p-6 space-y-4">
+          {/* 参数概览 */}
+          <div className="text-xs text-slate-400 bg-slate-900/50 p-2 rounded border border-slate-700/50 flex justify-between">
+            <span>攻击 +{simData.attackBonus} vs AC {simData.targetAC}</span>
+            <span>{simData.diceCount}d{simData.diceType}+{simData.damageMod}</span>
+          </div>
+
+          <div className="flex items-center gap-2 justify-center py-2">
+             <label className="text-xs text-slate-400">模拟次数:</label>
+             <select value={iterations} onChange={e => setIterations(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded text-xs p-1 outline-none text-slate-200">
+               <option value="10000">1万次 (极速)</option>
+               <option value="100000">10万次 (标准)</option>
+               <option value="1000000">100万次 (高精)</option>
+             </select>
+             <button onClick={runSimulation} disabled={loading} className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1 rounded flex items-center gap-1 transition-colors">
+               {loading ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} 重新运行
+             </button>
+          </div>
+
+          {error && (
+            <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in duration-300">
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center col-span-2">
+                <div className="text-slate-400 text-xs uppercase font-bold mb-1">期望伤害 (DPR)</div>
+                <div className="text-4xl font-bold text-purple-400">{result.avg_damage.toFixed(2)}</div>
+                <div className="text-[10px] text-slate-500 mt-1">本地算法计算值: {(calculateStats(simData, {ac: simData.targetAC}).dpr / simData.attacksPerRound).toFixed(2)}</div>
+              </div>
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center">
+                <div className="text-slate-400 text-xs uppercase font-bold mb-1">命中率</div>
+                <div className="text-xl font-bold text-green-400">{result.hit_rate.toFixed(1)}%</div>
+              </div>
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center">
+                <div className="text-slate-400 text-xs uppercase font-bold mb-1">暴击率</div>
+                <div className="text-xl font-bold text-amber-400">{result.crit_rate.toFixed(2)}%</div>
+              </div>
+              <div className="text-[10px] text-slate-600 text-center col-span-2">
+                耗时 {result.duration.toFixed(4)} 秒 • 模拟了 {result.iterations.toLocaleString()} 次攻击
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 骰子计算器组件 (保持不变) ---
 const DiceCalculator = ({ onClose }) => {
   const [dCount, setDCount] = useState(1);
   const [dType, setDType] = useState(8);
@@ -69,18 +164,16 @@ const DiceCalculator = ({ onClose }) => {
   );
 };
 
-// --- 通用输入卡片组件 (移至组件外) ---
-const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats }) => {
+// --- 通用输入卡片组件 (UnitCard) ---
+const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats, onSimulate }) => {
   return (
     <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
-      {/* Boss 标记 */}
       {item.attacksPerRound > 1 && item.isBoss && (
         <div className="absolute top-0 right-0 bg-red-900/50 text-red-300 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-red-800 flex items-center gap-1 z-10">
           <Zap className="w-3 h-3" /> x{item.attacksPerRound}
         </div>
       )}
 
-      {/* 头部：名字与核心操作 */}
       <div className={`p-3 border-b flex flex-wrap gap-2 justify-between items-center ${item.isBoss ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
         <div className="flex items-center gap-3 flex-1 min-w-[200px]">
           <span className="bg-slate-700 text-slate-400 text-xs px-1.5 py-0.5 rounded font-mono">{index + 1}</span>
@@ -99,16 +192,20 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
         </div>
 
         <div className="flex items-center gap-3">
-           <span className="text-xs text-slate-500 font-mono">DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>
-             {calculateStats(item, targetStats).dpr.toFixed(1)}
-           </span></span>
+           <div className="text-xs text-slate-500 font-mono flex items-center gap-2">
+             <span>DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>{calculateStats(item, targetStats).dpr.toFixed(1)}</span></span>
+             {/* 只有物理攻击可以跑蒙特卡洛（因为目前的 Python 代码只写了攻击逻辑） */}
+             {item.attackType === 'attack' && (
+               <button onClick={() => onSimulate(item, targetStats)} className="bg-purple-900/50 hover:bg-purple-700 text-purple-200 border border-purple-800 p-1 rounded" title="使用Python蒙特卡洛验证">
+                 <Server className="w-3 h-3" />
+               </button>
+             )}
+           </div>
            {showDelete && <button onClick={() => removeFunc(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}
         </div>
       </div>
 
-      {/* 核心数据配置 */}
       <div className="p-3 space-y-3">
-        {/* 第一行：防御属性配置 */}
         <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
           <div className="flex items-center gap-1">
             <Shield className="w-3 h-3 text-slate-500"/>
@@ -125,7 +222,6 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
           </div>
         </div>
 
-        {/* 第二行：攻击数据 */}
         <div className="grid grid-cols-4 gap-3">
           <div className="col-span-1">
             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">{item.attackType === 'attack' ? '命中加值' : '法术 DC'}</label>
@@ -150,7 +246,6 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
           </div>
         </div>
 
-        {/* 第三行：状态选项 */}
         <div className="border-t border-slate-700/50 pt-2 flex items-center gap-3">
           <div className="flex-1">
             {item.attackType === 'attack' ? (
@@ -185,24 +280,23 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
 const DndCombatCalculator = () => {
   const [mode, setMode] = useState('player_analysis');
   const [showDiceTool, setShowDiceTool] = useState(false);
+  const [showSimModal, setShowSimModal] = useState(false);
+  const [simData, setSimData] = useState(null);
   
-  // --- 联动开关 ---
   const [isLinked, setIsLinked] = useState(false);
 
-  // --- 玩家数据 ---
   const [players, setPlayers] = useState([
     { 
-      id: 1, name: '法师', 
-      attackType: 'save', attackBonus: 7, saveDC: 15, halfOnSave: true,
-      diceCount: 8, diceType: 6, damageMod: 0, attacksPerRound: 1, advantageState: 'normal',
-      ac: 12, hp: 40, saveBonus: 2
+      id: 1, name: '战士', 
+      attackType: 'attack', attackBonus: 7, saveDC: 15, halfOnSave: true,
+      diceCount: 2, diceType: 6, damageMod: 4, attacksPerRound: 2, advantageState: 'normal',
+      ac: 16, hp: 35, saveBonus: 2
     }
   ]);
   
   const [manualMonsterAC, setManualMonsterAC] = useState(15);
   const [manualMonsterSaveBonus, setManualMonsterSaveBonus] = useState(2);
 
-  // --- 怪物数据 ---
   const [monsters, setMonsters] = useState([
     { 
       id: 1, name: '地精首领', 
@@ -215,15 +309,27 @@ const DndCombatCalculator = () => {
   const [manualTargetPlayerAC, setManualTargetPlayerAC] = useState(15);
   const [manualTargetPlayerHP, setManualTargetPlayerHP] = useState(25);
 
-  // --- 动态计算 ---
   const [activeMonsterStats, setActiveMonsterStats] = useState({ ac: 15, saveBonus: 2, totalHP: 45 });
   const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 0, totalHP: 25 });
 
   const [partyTotalDPR, setPartyTotalDPR] = useState(0);
   const [encounterStats, setEncounterStats] = useState({ totalDPR: 0, highestMaxDamage: 0, bossName: '' });
 
-  // --- 存档 ---
   const fileInputRef = useRef(null);
+
+  const handleOpenSim = (item, targetStats) => {
+    // 准备发送给 Python 的数据
+    setSimData({
+      attackBonus: item.attackBonus,
+      targetAC: targetStats.ac,
+      diceCount: item.diceCount,
+      diceType: item.diceType,
+      damageMod: item.damageMod,
+      attacksPerRound: item.attacksPerRound,
+      advantageState: item.advantageState
+    });
+    setShowSimModal(true);
+  };
 
   const handleSave = () => {
     const data = { players, monsters, isLinked, timestamp: Date.now() };
@@ -253,11 +359,8 @@ const DndCombatCalculator = () => {
     reader.readAsText(file);
   };
 
-  // --- Effect: 联动逻辑 ---
   useEffect(() => {
-    // 计算平均值
     const pAC = players.reduce((sum, p) => sum + (p.ac || 10), 0) / players.length;
-    // 玩家豁免联动：保留计算逻辑但默认值为 0，以防未来扩展
     const pSave = players.reduce((sum, p) => sum + (p.saveBonus || 0), 0) / players.length;
     const pTotalHP = players.reduce((sum, p) => sum + (p.hp || 10), 0);
     
@@ -269,7 +372,6 @@ const DndCombatCalculator = () => {
       ? { ac: Math.round(mAC), saveBonus: Math.round(mSave), totalHP: mTotalHP } 
       : { ac: manualMonsterAC, saveBonus: manualMonsterSaveBonus, totalHP: 0 }; 
 
-    // 玩家豁免手动值移除，默认为 0
     const currentPlayerTarget = isLinked
       ? { ac: Math.round(pAC), saveBonus: Math.round(pSave), totalHP: pTotalHP }
       : { ac: manualTargetPlayerAC, saveBonus: 0, totalHP: manualTargetPlayerHP };
@@ -295,7 +397,6 @@ const DndCombatCalculator = () => {
 
   }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerHP]);
 
-  // --- CRUD 操作 ---
   const updateItem = (setFunc, list, id, field, value) => {
     setFunc(list.map(item => {
       if (item.id !== id) return item;
@@ -317,15 +418,14 @@ const DndCombatCalculator = () => {
       ac: 13, hp: 30, saveBonus: 2 
     };
 
-    // 怪物添加逻辑：以第一只怪物为原型 (复制数据，但重置BOSS状态和攻击次数)
     if (prefix === '怪物' && list.length > 0) {
       const prototype = list[0];
       newItem = {
         ...prototype,
         id: Date.now(),
         name: `${prefix} ${list.length + 1}`,
-        isBoss: false, // 新增怪物默认非BOSS
-        attacksPerRound: 1 // 新增怪物默认攻击次数重置为1
+        isBoss: false, 
+        attacksPerRound: 1 
       };
     }
 
@@ -336,8 +436,8 @@ const DndCombatCalculator = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-10">
-      {/* 弹窗 & 隐藏文件输入 */}
       {showDiceTool && <DiceCalculator onClose={() => setShowDiceTool(false)} />}
+      {showSimModal && simData && <SimulationModal simData={simData} onClose={() => setShowSimModal(false)} />}
       <input type="file" ref={fileInputRef} onChange={handleLoad} className="hidden" accept=".json" />
 
       {/* 顶部导航 */}
@@ -367,7 +467,7 @@ const DndCombatCalculator = () => {
         </div>
       </header>
 
-      {/* 联动开关提示栏 */}
+      {/* 联动开关 */}
       <div className={`border-b px-4 py-2 text-center text-xs font-bold transition-colors cursor-pointer flex justify-center items-center gap-2 ${isLinked ? 'bg-indigo-900/50 border-indigo-700 text-indigo-200' : 'bg-slate-900 border-slate-800 text-slate-500 hover:bg-slate-800'}`} onClick={() => setIsLinked(!isLinked)}>
         {isLinked ? <LinkIcon className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
         {isLinked ? "数据联动已开启：正在使用对面队伍的真实数值进行对抗计算" : "数据联动已关闭：使用下方手动输入的假人数值进行计算 (点击开启联动)"}
@@ -381,7 +481,6 @@ const DndCombatCalculator = () => {
               <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2 text-amber-400"><Users className="w-5 h-5" /> 玩家队伍配置</h2>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {/* 全局设置：仅在非联动模式下可编辑 */}
                   <div className={`p-2 rounded-lg border flex items-center gap-3 shadow-sm transition-all ${isLinked ? 'bg-indigo-900/20 border-indigo-500/30 opacity-80' : 'bg-slate-800 border-slate-700'}`}>
                     <div className="flex items-center gap-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">目标AC</label>
@@ -406,7 +505,7 @@ const DndCombatCalculator = () => {
               </div>
               <div className="space-y-3">
                 {players.map((p, index) => (
-                  <UnitCard key={p.id} item={p} index={index} isMonster={false} updateFunc={(id, f, v) => updateItem(setPlayers, players, id, f, v)} removeFunc={(id) => removeItem(setPlayers, players, id)} showDelete={players.length > 1} targetStats={activeMonsterStats} />
+                  <UnitCard key={p.id} item={p} index={index} isMonster={false} updateFunc={(id, f, v) => updateItem(setPlayers, players, id, f, v)} removeFunc={(id) => removeItem(setPlayers, players, id)} showDelete={players.length > 1} targetStats={activeMonsterStats} onSimulate={handleOpenSim} />
                 ))}
               </div>
             </div>
@@ -424,7 +523,6 @@ const DndCombatCalculator = () => {
                         <input type="number" value={manualTargetPlayerAC} onChange={(e) => setManualTargetPlayerAC(Number(e.target.value))} className="w-12 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-center text-slate-200 font-bold outline-none focus:border-red-500" />
                       )}
                     </div>
-                    {/* 已移除玩家豁免输入框 */}
                     <div className="w-px h-6 bg-slate-700"></div>
                      <div className="flex items-center gap-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">玩家HP</label>
@@ -440,17 +538,15 @@ const DndCombatCalculator = () => {
               </div>
               <div className="space-y-3">
                 {monsters.map((m, index) => (
-                  <UnitCard key={m.id} item={m} index={index} isMonster={true} updateFunc={(id, f, v) => updateItem(setMonsters, monsters, id, f, v)} removeFunc={(id) => removeItem(setMonsters, monsters, id)} showDelete={monsters.length > 1} targetStats={activePlayerStats} />
+                  <UnitCard key={m.id} item={m} index={index} isMonster={true} updateFunc={(id, f, v) => updateItem(setMonsters, monsters, id, f, v)} removeFunc={(id) => removeItem(setMonsters, monsters, id)} showDelete={monsters.length > 1} targetStats={activePlayerStats} onSimulate={handleOpenSim} />
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* 右侧结果区 */}
+        {/* 右侧结果区 (保持不变) */}
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
-          
-          {/* 当开启联动时，显示战斗模拟结果 */}
           {isLinked && (
             <div className="bg-indigo-950/40 rounded-xl border border-indigo-500/30 overflow-hidden shadow-lg mb-6">
               <div className="bg-indigo-900/30 p-3 border-b border-indigo-500/20 flex items-center gap-2">
@@ -472,6 +568,7 @@ const DndCombatCalculator = () => {
             </div>
           )}
 
+          {/* ... (其他 UI 保持不变) ... */}
           {mode === 'player_analysis' ? (
             <>
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl relative overflow-hidden group">
