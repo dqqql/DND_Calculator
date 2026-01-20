@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink, Server, PlayCircle, Loader2, Target } from 'lucide-react';
+import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink, Server, PlayCircle, Loader2, Target, BarChart2, List } from 'lucide-react';
 
 // ==========================================
-// 1. 纯 JS 版蒙特卡洛引擎 (原 Python 逻辑移植)
+// 1. 纯 JS 版蒙特卡洛引擎 (升级版：支持单体统计)
 // ==========================================
 const MonteCarloEngine = {
-  // 模拟 d20 骰子 (1-20)
   rollD20: (advantageState = 'normal') => {
     const roll = () => Math.floor(Math.random() * 20) + 1;
     const r1 = roll();
@@ -15,7 +14,6 @@ const MonteCarloEngine = {
     return r1;
   },
 
-  // 模拟伤害骰
   rollDamage: (diceCount, diceSides, isCrit = false) => {
     const actualCount = isCrit ? diceCount * 2 : diceCount;
     let total = 0;
@@ -25,35 +23,24 @@ const MonteCarloEngine = {
     return total;
   },
 
-  // 模拟单次攻击结算
   resolveOneAttack: (attacker, targetAC, targetSave) => {
     let damage = 0;
     const attacks = attacker.attacksPerRound || 1;
 
     for (let i = 0; i < attacks; i++) {
-      // --- 物理攻击逻辑 ---
       if (attacker.attackType === 'attack') {
         const d20 = MonteCarloEngine.rollD20(attacker.advantageState);
         let isHit = false;
         let isCrit = false;
 
-        if (d20 === 20) {
-          isHit = true;
-          isCrit = true;
-        } else if (d20 === 1) {
-          isHit = false;
-        } else {
-          if (d20 + (attacker.attackBonus || 0) >= targetAC) isHit = true;
-        }
+        if (d20 === 20) { isHit = true; isCrit = true; }
+        else if (d20 === 1) { isHit = false; }
+        else if (d20 + (attacker.attackBonus || 0) >= targetAC) { isHit = true; }
 
         if (isHit) {
-          const dmg = MonteCarloEngine.rollDamage(attacker.diceCount, attacker.diceType, isCrit);
-          damage += dmg + (attacker.damageMod || 0);
+          damage += MonteCarloEngine.rollDamage(attacker.diceCount, attacker.diceType, isCrit) + (attacker.damageMod || 0);
         }
-      } 
-      // --- 法术豁免逻辑 ---
-      else {
-        // 目标豁免 (简化为平骰)
+      } else {
         const saveRoll = Math.floor(Math.random() * 20) + 1;
         const saveTotal = saveRoll + targetSave;
         const dc = attacker.saveDC || 10;
@@ -71,34 +58,20 @@ const MonteCarloEngine = {
     return damage;
   },
 
-  // 运行单体模拟 (修复版：正确处理多重攻击独立性)
   runSingleSimulation: async (params, iterations = 100000) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        let totalDamage = 0;
-        let totalHits = 0;
-        let totalCrits = 0;
+        let totalDamage = 0, totalHits = 0, totalCrits = 0;
         const start = performance.now();
-
         const { attackBonus, targetAC, diceCount, diceType, damageMod, advantageState, attacksPerRound } = params;
         const attacks = attacksPerRound || 1;
 
-        // 模拟 iterations 个回合
         for (let i = 0; i < iterations; i++) {
-          // 每个回合内进行 attacks 次独立攻击
           for (let a = 0; a < attacks; a++) {
             const d20 = MonteCarloEngine.rollD20(advantageState);
-            let isHit = false;
-            let isCrit = false;
-
-            if (d20 === 20) { 
-              isHit = true; 
-              isCrit = true; 
-            } else if (d20 === 1) { 
-              isHit = false; 
-            } else if (d20 + attackBonus >= targetAC) { 
-              isHit = true; 
-            }
+            let isHit = false, isCrit = false;
+            if (d20 === 20) { isHit = true; isCrit = true; }
+            else if (d20 !== 1 && d20 + attackBonus >= targetAC) { isHit = true; }
 
             if (isHit) {
               if (isCrit) totalCrits++; else totalHits++;
@@ -111,9 +84,9 @@ const MonteCarloEngine = {
         const totalAttacks = iterations * attacks;
 
         resolve({
-          avg_damage: totalDamage / iterations, // 每回合平均伤害
-          hit_rate: ((totalHits + totalCrits) / totalAttacks) * 100, // 实际命中率 (按攻击次数算)
-          crit_rate: (totalCrits / totalAttacks) * 100, // 实际暴击率
+          avg_damage: totalDamage / iterations,
+          hit_rate: ((totalHits + totalCrits) / totalAttacks) * 100,
+          crit_rate: (totalCrits / totalAttacks) * 100,
           duration: (end - start) / 1000,
           iterations
         });
@@ -121,28 +94,23 @@ const MonteCarloEngine = {
     });
   },
 
-  // 运行团战模拟
   runEncounterSimulation: async (teamA, teamB, statsA, statsB, iterations = 10000) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        let winsA = 0;
-        let totalRounds = 0;
-        let totalDmgA = 0;
-        let totalDmgB = 0;
+        let winsA = 0, totalRounds = 0, totalDmgA = 0, totalDmgB = 0;
+        const unitStats = {}; // { [unitId]: totalDamageAccumulated }
         
-        const start = performance.now();
+        // 初始化统计对象
+        [...teamA, ...teamB].forEach(u => unitStats[u.id] = 0);
 
+        const start = performance.now();
         const initialHpA = statsA.totalHP;
         const initialHpB = statsB.totalHP;
-        const targetAcA = statsA.ac; 
-        const targetSaveA = statsA.saveBonus;
-        const targetAcB = statsB.ac; 
-        const targetSaveB = statsB.saveBonus;
+        const targetAcA = statsA.ac, targetSaveA = statsA.saveBonus;
+        const targetAcB = statsB.ac, targetSaveB = statsB.saveBonus;
 
         for (let i = 0; i < iterations; i++) {
-          let hpA = initialHpA;
-          let hpB = initialHpB;
-          let rounds = 0;
+          let hpA = initialHpA, hpB = initialHpB, rounds = 0;
 
           while (hpA > 0 && hpB > 0 && rounds < 50) {
             rounds++;
@@ -150,20 +118,21 @@ const MonteCarloEngine = {
             // Team A 攻击
             let roundDmgA = 0;
             for (const unit of teamA) {
-              roundDmgA += MonteCarloEngine.resolveOneAttack(unit, targetAcB, targetSaveB);
+              const dmg = MonteCarloEngine.resolveOneAttack(unit, targetAcB, targetSaveB);
+              roundDmgA += dmg;
+              unitStats[unit.id] += dmg; // 记录个人贡献
             }
             hpB -= roundDmgA;
             totalDmgA += roundDmgA;
 
-            if (hpB <= 0) {
-              winsA++;
-              break;
-            }
+            if (hpB <= 0) { winsA++; break; }
 
             // Team B 攻击
             let roundDmgB = 0;
             for (const unit of teamB) {
-              roundDmgB += MonteCarloEngine.resolveOneAttack(unit, targetAcA, targetSaveA);
+              const dmg = MonteCarloEngine.resolveOneAttack(unit, targetAcA, targetSaveA);
+              roundDmgB += dmg;
+              unitStats[unit.id] += dmg; // 记录个人贡献
             }
             hpA -= roundDmgB;
             totalDmgB += roundDmgB;
@@ -172,6 +141,16 @@ const MonteCarloEngine = {
         }
 
         const end = performance.now();
+        
+        // 处理单体数据
+        const unitResults = {};
+        Object.keys(unitStats).forEach(id => {
+          unitResults[id] = {
+            avg_total: unitStats[id] / iterations,
+            avg_dpr: totalRounds > 0 ? unitStats[id] / totalRounds : 0
+          };
+        });
+
         resolve({
           win_rate: (winsA / iterations) * 100,
           avg_rounds: totalRounds / iterations,
@@ -179,6 +158,7 @@ const MonteCarloEngine = {
           avg_total_damage_b: totalDmgB / iterations,
           avg_dpr_a: totalRounds > 0 ? totalDmgA / totalRounds : 0,
           avg_dpr_b: totalRounds > 0 ? totalDmgB / totalRounds : 0,
+          unit_results: unitResults, // 新增：单体详细数据
           duration: (end - start) / 1000,
           iterations
         });
@@ -188,18 +168,12 @@ const MonteCarloEngine = {
 };
 
 // ==========================================
-// 2. 核心数学算法 (保持不变，用于实时显示)
+// 2. 核心数学算法 (保持不变)
 // ==========================================
 const calculateStats = (params, targetStats) => {
-  const { 
-    attackType, attackBonus, saveDC, halfOnSave, 
-    diceCount, diceType, damageMod, attacksPerRound, advantageState 
-  } = params;
-  
+  const { attackType, attackBonus, saveDC, halfOnSave, diceCount, diceType, damageMod, attacksPerRound, advantageState } = params;
   const { ac, saveBonus } = targetStats;
-
-  let hitChance = 0;
-  let critChance = 0;
+  let hitChance = 0, critChance = 0;
 
   if (attackType === 'attack') {
     const neededRoll = ac - attackBonus;
@@ -211,18 +185,16 @@ const calculateStats = (params, targetStats) => {
   } else {
     const rawSaveChance = Math.min(1.0, Math.max(0.0, (21 + (saveBonus || 0) - saveDC) / 20));
     const failChance = 1 - rawSaveChance;
-    critChance = 0;
     hitChance = halfOnSave ? failChance + (rawSaveChance * 0.5) : failChance;
   }
 
   const diceAvg = diceCount * ((diceType + 1) / 2);
   const dpr = ((hitChance * (diceAvg + damageMod)) + (critChance * diceAvg)) * attacksPerRound;
   const maxDamage = ((diceCount * diceType) + damageMod); 
-
   return { dpr, maxDamage };
 };
 
-// ... DiceCalculator, UnitCard 组件 (保持不变) ...
+// ... DiceCalculator (不变) ...
 const DiceCalculator = ({ onClose }) => {
   const [dCount, setDCount] = useState(1);
   const [dType, setDType] = useState(8);
@@ -254,6 +226,7 @@ const DiceCalculator = ({ onClose }) => {
   );
 };
 
+// ... UnitCard (不变) ...
 const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats, onSimulate }) => {
   return (
     <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
@@ -271,10 +244,7 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
         <div className="flex items-center gap-3">
            <div className="text-xs text-slate-500 font-mono flex items-center gap-2">
              <span>DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>{calculateStats(item, targetStats).dpr.toFixed(1)}</span></span>
-             {/* 所有类型都可以跑 JS 版蒙特卡洛 */}
-             <button onClick={() => onSimulate(item, targetStats)} className="bg-purple-900/50 hover:bg-purple-700 text-purple-200 border border-purple-800 p-1 rounded" title="模拟验证">
-               <Server className="w-3 h-3" />
-             </button>
+             <button onClick={() => onSimulate(item, targetStats)} className="bg-purple-900/50 hover:bg-purple-700 text-purple-200 border border-purple-800 p-1 rounded" title="模拟验证"><Server className="w-3 h-3" /></button>
            </div>
            {showDelete && <button onClick={() => removeFunc(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}
         </div>
@@ -305,7 +275,7 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
   );
 };
 
-// --- 修改后的 SimulationModal (调用 JS 引擎) ---
+// ... SimulationModal (单体弹窗，不变) ...
 const SimulationModal = ({ onClose, simData }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -313,7 +283,6 @@ const SimulationModal = ({ onClose, simData }) => {
 
   const runSimulation = async () => {
     setLoading(true);
-    // 直接调用本地 JS 引擎，不再 fetch
     const data = await MonteCarloEngine.runSingleSimulation(simData, iterations);
     setResult(data);
     setLoading(false);
@@ -335,11 +304,7 @@ const SimulationModal = ({ onClose, simData }) => {
           </div>
           <div className="flex items-center gap-2 justify-center py-2">
              <label className="text-xs text-slate-400">模拟次数:</label>
-             <select value={iterations} onChange={e => setIterations(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded text-xs p-1 outline-none text-slate-200">
-               <option value="10000">1万次</option>
-               <option value="100000">10万次</option>
-               <option value="1000000">100万次</option>
-             </select>
+             <select value={iterations} onChange={e => setIterations(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded text-xs p-1 outline-none text-slate-200"><option value="10000">1万次</option><option value="100000">10万次</option><option value="1000000">100万次</option></select>
              <button onClick={runSimulation} disabled={loading} className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1 rounded flex items-center gap-1 transition-colors">{loading ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} 重新运行</button>
           </div>
           {result && (
@@ -359,18 +324,16 @@ const SimulationModal = ({ onClose, simData }) => {
   );
 };
 
-// --- 修改后的 EncounterSimModal (调用 JS 引擎) ---
+// --- 团战模拟结果弹窗 (升级版：带选项卡和详细列表) ---
 const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'details'
 
   const runSimulation = async () => {
     setLoading(true);
-    // 注入对手防御数据
     const enrichedTeamA = teamA.map(u => ({ ...u, ac: statsA.ac, saveBonus: statsA.saveBonus }));
     const enrichedTeamB = teamB.map(u => ({ ...u, ac: statsB.ac, saveBonus: statsB.saveBonus }));
-    
-    // 直接调用本地 JS 引擎
     const data = await MonteCarloEngine.runEncounterSimulation(enrichedTeamA, enrichedTeamB, statsA, statsB, 10000);
     setResult(data);
     setLoading(false);
@@ -380,13 +343,16 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+      <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Modal Header */}
+        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center shrink-0">
           <h3 className="text-indigo-400 font-bold flex items-center gap-2"><Target className="w-5 h-5"/> 全局战役模拟 (JS)</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
         </div>
-        <div className="p-6 space-y-6">
-          <div className="flex justify-between items-center px-4">
+
+        <div className="p-6 overflow-y-auto grow">
+          <div className="flex justify-between items-center px-4 mb-4">
              <div className="text-center">
                <div className="text-xl font-bold text-amber-400">玩家队伍</div>
                <div className="text-xs text-slate-500">{teamA.length} 人 (HP {statsA.totalHP})</div>
@@ -398,40 +364,105 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
              </div>
           </div>
 
-          {loading && <div className="py-8 flex justify-center text-indigo-400"><Loader2 className="w-8 h-8 animate-spin"/></div>}
+          {loading && <div className="py-12 flex justify-center text-indigo-400"><Loader2 className="w-10 h-10 animate-spin"/></div>}
           
-          {result && (
+          {result && !loading && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700 text-center relative overflow-hidden">
-                <div className="absolute top-0 bottom-0 left-0 bg-amber-500/10 transition-all duration-1000" style={{width: `${result.win_rate}%`}}></div>
-                <div className="relative z-10">
-                  <div className="text-sm text-slate-400 font-bold uppercase tracking-wider mb-2">玩家胜率 (Win Rate)</div>
-                  <div className={`text-5xl font-black ${result.win_rate > 80 ? 'text-green-400' : result.win_rate > 50 ? 'text-amber-400' : 'text-red-500'}`}>{result.win_rate.toFixed(1)}%</div>
-                  <div className="text-xs text-slate-500 mt-2">JS 模拟耗时: {result.duration.toFixed(3)}s</div>
-                </div>
+              
+              {/* 选项卡切换 */}
+              <div className="flex border-b border-slate-700 mb-4">
+                <button 
+                  onClick={() => setActiveTab('overview')}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === 'overview' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                >
+                  <BarChart2 className="w-4 h-4"/> 战报总览
+                </button>
+                <button 
+                  onClick={() => setActiveTab('details')}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                >
+                  <List className="w-4 h-4"/> 详细数据
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center"><div className="text-xs text-slate-400 mb-1">平均战斗时长</div><div className="text-xl font-bold text-white">{result.avg_rounds.toFixed(1)} <span className="text-sm font-normal text-slate-500">轮</span></div></div>
-                 <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center"><div className="text-xs text-slate-400 mb-1">团灭风险</div><div className={`text-xl font-bold ${(100 - result.win_rate) > 50 ? 'text-red-400' : 'text-green-400'}`}>{(100 - result.win_rate).toFixed(1)}%</div></div>
-              </div>
-              
-              <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 p-3">
-                <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700">
-                  <div className="text-center space-y-1">
-                    <div className="text-amber-400 font-bold text-xs uppercase mb-2">玩家队伍</div>
-                    <div className="flex justify-between text-xs text-slate-400 px-2"><span>场均总伤:</span><span className="text-white font-mono">{result.avg_total_damage_a.toFixed(0)}</span></div>
-                    <div className="flex justify-between text-xs text-slate-400 px-2"><span>实战 DPR:</span><span className="text-white font-mono">{result.avg_dpr_a.toFixed(1)}</span></div>
+              {/* Tab 1: 总览 */}
+              {activeTab === 'overview' && (
+                <div className="space-y-4">
+                  <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700 text-center relative overflow-hidden">
+                    <div className="absolute top-0 bottom-0 left-0 bg-amber-500/10 transition-all duration-1000" style={{width: `${result.win_rate}%`}}></div>
+                    <div className="relative z-10">
+                      <div className="text-sm text-slate-400 font-bold uppercase tracking-wider mb-2">玩家胜率 (Win Rate)</div>
+                      <div className={`text-5xl font-black ${result.win_rate > 80 ? 'text-green-400' : result.win_rate > 50 ? 'text-amber-400' : 'text-red-500'}`}>{result.win_rate.toFixed(1)}%</div>
+                      <div className="text-xs text-slate-500 mt-2">JS 模拟耗时: {result.duration.toFixed(3)}s</div>
+                    </div>
                   </div>
-                  <div className="text-center space-y-1">
-                    <div className="text-red-400 font-bold text-xs uppercase mb-2">怪物队伍</div>
-                    <div className="flex justify-between text-xs text-slate-400 px-2"><span>场均总伤:</span><span className="text-white font-mono">{result.avg_total_damage_b.toFixed(0)}</span></div>
-                    <div className="flex justify-between text-xs text-slate-400 px-2"><span>实战 DPR:</span><span className="text-white font-mono">{result.avg_dpr_b.toFixed(1)}</span></div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center"><div className="text-xs text-slate-400 mb-1">平均战斗时长</div><div className="text-xl font-bold text-white">{result.avg_rounds.toFixed(1)} <span className="text-sm font-normal text-slate-500">轮</span></div></div>
+                     <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center"><div className="text-xs text-slate-400 mb-1">团灭风险</div><div className={`text-xl font-bold ${(100 - result.win_rate) > 50 ? 'text-red-400' : 'text-green-400'}`}>{(100 - result.win_rate).toFixed(1)}%</div></div>
+                  </div>
+                  
+                  <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 p-3">
+                    <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700">
+                      <div className="text-center space-y-1">
+                        <div className="text-amber-400 font-bold text-xs uppercase mb-2">玩家队伍</div>
+                        <div className="flex justify-between text-xs text-slate-400 px-2"><span>场均总伤:</span><span className="text-white font-mono">{result.avg_total_damage_a.toFixed(0)}</span></div>
+                        <div className="flex justify-between text-xs text-slate-400 px-2"><span>实战 DPR:</span><span className="text-white font-mono">{result.avg_dpr_a.toFixed(1)}</span></div>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <div className="text-red-400 font-bold text-xs uppercase mb-2">怪物队伍</div>
+                        <div className="flex justify-between text-xs text-slate-400 px-2"><span>场均总伤:</span><span className="text-white font-mono">{result.avg_total_damage_b.toFixed(0)}</span></div>
+                        <div className="flex justify-between text-xs text-slate-400 px-2"><span>实战 DPR:</span><span className="text-white font-mono">{result.avg_dpr_b.toFixed(1)}</span></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Tab 2: 详细列表 */}
+              {activeTab === 'details' && (
+                <div className="grid grid-cols-2 gap-4 h-[300px]">
+                  {/* 左侧：玩家列表 */}
+                  <div className="bg-slate-900/30 border border-slate-700 rounded-lg overflow-hidden flex flex-col">
+                    <div className="bg-slate-800/80 px-3 py-2 text-xs font-bold text-amber-400 border-b border-slate-700">玩家详细表现</div>
+                    <div className="overflow-y-auto p-2 space-y-2">
+                      {teamA.map((unit, i) => {
+                        const stats = result.unit_results[unit.id];
+                        return (
+                          <div key={unit.id} className="flex justify-between items-center text-xs p-2 bg-slate-800/50 rounded border border-slate-700/50">
+                            <span className="font-bold text-slate-200 truncate w-16" title={unit.name}>{unit.name}</span>
+                            <div className="text-right">
+                              <div className="text-amber-200 font-mono">{stats.avg_total.toFixed(0)} 总伤</div>
+                              <div className="text-slate-500 font-mono text-[10px]">{stats.avg_dpr.toFixed(1)} DPR</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 右侧：怪物列表 */}
+                  <div className="bg-slate-900/30 border border-slate-700 rounded-lg overflow-hidden flex flex-col">
+                    <div className="bg-slate-800/80 px-3 py-2 text-xs font-bold text-red-400 border-b border-slate-700">怪物详细表现</div>
+                    <div className="overflow-y-auto p-2 space-y-2">
+                      {teamB.map((unit, i) => {
+                        const stats = result.unit_results[unit.id];
+                        return (
+                          <div key={unit.id} className="flex justify-between items-center text-xs p-2 bg-slate-800/50 rounded border border-slate-700/50">
+                            <span className="font-bold text-slate-200 truncate w-16" title={unit.name}>{unit.name}</span>
+                            <div className="text-right">
+                              <div className="text-red-200 font-mono">{stats.avg_total.toFixed(0)} 总伤</div>
+                              <div className="text-slate-500 font-mono text-[10px]">{stats.avg_dpr.toFixed(1)} DPR</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
               
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-2">
                 <button onClick={runSimulation} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><PlayCircle className="w-3 h-3"/> 再次模拟</button>
               </div>
             </div>
