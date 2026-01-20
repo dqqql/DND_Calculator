@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink, Server, PlayCircle, Loader2, Target, BarChart2, List } from 'lucide-react';
 
 // ==========================================
-// 1. 纯 JS 版蒙特卡洛引擎 (升级版：支持单体统计)
+// 1. 纯 JS 版蒙特卡洛引擎 (修复版：ID冲突分离)
 // ==========================================
 const MonteCarloEngine = {
   rollD20: (advantageState = 'normal') => {
@@ -98,10 +98,13 @@ const MonteCarloEngine = {
     return new Promise((resolve) => {
       setTimeout(() => {
         let winsA = 0, totalRounds = 0, totalDmgA = 0, totalDmgB = 0;
-        const unitStats = {}; // { [unitId]: totalDamageAccumulated }
         
-        // 初始化统计对象
-        [...teamA, ...teamB].forEach(u => unitStats[u.id] = 0);
+        // 关键修复：将玩家统计(A)和怪物统计(B)完全分开，防止 ID 冲突
+        const unitStatsA = {}; 
+        const unitStatsB = {};
+        
+        teamA.forEach(u => unitStatsA[u.id] = 0);
+        teamB.forEach(u => unitStatsB[u.id] = 0);
 
         const start = performance.now();
         const initialHpA = statsA.totalHP;
@@ -120,7 +123,7 @@ const MonteCarloEngine = {
             for (const unit of teamA) {
               const dmg = MonteCarloEngine.resolveOneAttack(unit, targetAcB, targetSaveB);
               roundDmgA += dmg;
-              unitStats[unit.id] += dmg; // 记录个人贡献
+              unitStatsA[unit.id] += dmg; // 记入 A 队账本
             }
             hpB -= roundDmgA;
             totalDmgA += roundDmgA;
@@ -132,7 +135,7 @@ const MonteCarloEngine = {
             for (const unit of teamB) {
               const dmg = MonteCarloEngine.resolveOneAttack(unit, targetAcA, targetSaveA);
               roundDmgB += dmg;
-              unitStats[unit.id] += dmg; // 记录个人贡献
+              unitStatsB[unit.id] += dmg; // 记入 B 队账本
             }
             hpA -= roundDmgB;
             totalDmgB += roundDmgB;
@@ -142,14 +145,17 @@ const MonteCarloEngine = {
 
         const end = performance.now();
         
-        // 处理单体数据
-        const unitResults = {};
-        Object.keys(unitStats).forEach(id => {
-          unitResults[id] = {
-            avg_total: unitStats[id] / iterations,
-            avg_dpr: totalRounds > 0 ? unitStats[id] / totalRounds : 0
-          };
-        });
+        // 分别处理两队数据
+        const processResults = (statsObj) => {
+          const res = {};
+          Object.keys(statsObj).forEach(id => {
+            res[id] = {
+              avg_total: statsObj[id] / iterations,
+              avg_dpr: totalRounds > 0 ? statsObj[id] / totalRounds : 0
+            };
+          });
+          return res;
+        };
 
         resolve({
           win_rate: (winsA / iterations) * 100,
@@ -158,7 +164,8 @@ const MonteCarloEngine = {
           avg_total_damage_b: totalDmgB / iterations,
           avg_dpr_a: totalRounds > 0 ? totalDmgA / totalRounds : 0,
           avg_dpr_b: totalRounds > 0 ? totalDmgB / totalRounds : 0,
-          unit_results: unitResults, // 新增：单体详细数据
+          unit_results_a: processResults(unitStatsA), // 玩家详细数据
+          unit_results_b: processResults(unitStatsB), // 怪物详细数据
           duration: (end - start) / 1000,
           iterations
         });
@@ -194,7 +201,7 @@ const calculateStats = (params, targetStats) => {
   return { dpr, maxDamage };
 };
 
-// ... DiceCalculator (不变) ...
+// ... DiceCalculator, UnitCard, SimulationModal (保持不变) ...
 const DiceCalculator = ({ onClose }) => {
   const [dCount, setDCount] = useState(1);
   const [dType, setDType] = useState(8);
@@ -226,7 +233,6 @@ const DiceCalculator = ({ onClose }) => {
   );
 };
 
-// ... UnitCard (不变) ...
 const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats, onSimulate }) => {
   return (
     <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
@@ -275,7 +281,6 @@ const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, 
   );
 };
 
-// ... SimulationModal (单体弹窗，不变) ...
 const SimulationModal = ({ onClose, simData }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -324,11 +329,11 @@ const SimulationModal = ({ onClose, simData }) => {
   );
 };
 
-// --- 团战模拟结果弹窗 (升级版：带选项卡和详细列表) ---
+// --- 团战模拟结果弹窗 (升级版：读取分离后的数据) ---
 const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'details'
+  const [activeTab, setActiveTab] = useState('overview');
 
   const runSimulation = async () => {
     setLoading(true);
@@ -419,7 +424,7 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
                 </div>
               )}
 
-              {/* Tab 2: 详细列表 */}
+              {/* Tab 2: 详细列表 (修复版：分别读取 unit_results_a 和 unit_results_b) */}
               {activeTab === 'details' && (
                 <div className="grid grid-cols-2 gap-4 h-[300px]">
                   {/* 左侧：玩家列表 */}
@@ -427,7 +432,7 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
                     <div className="bg-slate-800/80 px-3 py-2 text-xs font-bold text-amber-400 border-b border-slate-700">玩家详细表现</div>
                     <div className="overflow-y-auto p-2 space-y-2">
                       {teamA.map((unit, i) => {
-                        const stats = result.unit_results[unit.id];
+                        const stats = result.unit_results_a[unit.id] || { avg_total: 0, avg_dpr: 0 };
                         return (
                           <div key={unit.id} className="flex justify-between items-center text-xs p-2 bg-slate-800/50 rounded border border-slate-700/50">
                             <span className="font-bold text-slate-200 truncate w-16" title={unit.name}>{unit.name}</span>
@@ -446,7 +451,7 @@ const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
                     <div className="bg-slate-800/80 px-3 py-2 text-xs font-bold text-red-400 border-b border-slate-700">怪物详细表现</div>
                     <div className="overflow-y-auto p-2 space-y-2">
                       {teamB.map((unit, i) => {
-                        const stats = result.unit_results[unit.id];
+                        const stats = result.unit_results_b[unit.id] || { avg_total: 0, avg_dpr: 0 };
                         return (
                           <div key={unit.id} className="flex justify-between items-center text-xs p-2 bg-slate-800/50 rounded border border-slate-700/50">
                             <span className="font-bold text-slate-200 truncate w-16" title={unit.name}>{unit.name}</span>
