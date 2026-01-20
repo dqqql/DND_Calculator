@@ -213,12 +213,11 @@ const DndCombatCalculator = () => {
   ]);
 
   const [manualTargetPlayerAC, setManualTargetPlayerAC] = useState(15);
-  const [manualTargetPlayerSaveBonus, setManualTargetPlayerSaveBonus] = useState(3);
   const [manualTargetPlayerHP, setManualTargetPlayerHP] = useState(25);
 
   // --- 动态计算 ---
   const [activeMonsterStats, setActiveMonsterStats] = useState({ ac: 15, saveBonus: 2, totalHP: 45 });
-  const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 3, totalHP: 25 });
+  const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 0, totalHP: 25 });
 
   const [partyTotalDPR, setPartyTotalDPR] = useState(0);
   const [encounterStats, setEncounterStats] = useState({ totalDPR: 0, highestMaxDamage: 0, bossName: '' });
@@ -258,6 +257,7 @@ const DndCombatCalculator = () => {
   useEffect(() => {
     // 计算平均值
     const pAC = players.reduce((sum, p) => sum + (p.ac || 10), 0) / players.length;
+    // 玩家豁免联动：保留计算逻辑但默认值为 0，以防未来扩展
     const pSave = players.reduce((sum, p) => sum + (p.saveBonus || 0), 0) / players.length;
     const pTotalHP = players.reduce((sum, p) => sum + (p.hp || 10), 0);
     
@@ -269,9 +269,10 @@ const DndCombatCalculator = () => {
       ? { ac: Math.round(mAC), saveBonus: Math.round(mSave), totalHP: mTotalHP } 
       : { ac: manualMonsterAC, saveBonus: manualMonsterSaveBonus, totalHP: 0 }; 
 
+    // 玩家豁免手动值移除，默认为 0
     const currentPlayerTarget = isLinked
       ? { ac: Math.round(pAC), saveBonus: Math.round(pSave), totalHP: pTotalHP }
-      : { ac: manualTargetPlayerAC, saveBonus: manualTargetPlayerSaveBonus, totalHP: manualTargetPlayerHP };
+      : { ac: manualTargetPlayerAC, saveBonus: 0, totalHP: manualTargetPlayerHP };
 
     setActiveMonsterStats(currentMonsterTarget);
     setActivePlayerStats(currentPlayerTarget);
@@ -292,7 +293,7 @@ const DndCombatCalculator = () => {
     });
     setEncounterStats({ totalDPR: mTotalDPR, highestMaxDamage: highestMax, bossName: boss });
 
-  }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerSaveBonus, manualTargetPlayerHP]);
+  }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerHP]);
 
   // --- CRUD 操作 ---
   const updateItem = (setFunc, list, id, field, value) => {
@@ -308,12 +309,27 @@ const DndCombatCalculator = () => {
 
   const addItem = (setFunc, list, prefix, defaultType) => {
     if (list.length >= 8) return;
-    setFunc([...list, { 
+    
+    let newItem = { 
       id: Date.now(), name: `${prefix} ${list.length + 1}`, 
       attackType: defaultType, attackBonus: 5, saveDC: 13, halfOnSave: false,
       diceCount: 1, diceType: 8, damageMod: 3, attacksPerRound: 1, advantageState: 'normal',
       ac: 13, hp: 30, saveBonus: 2 
-    }]);
+    };
+
+    // 怪物添加逻辑：以第一只怪物为原型 (复制数据，但重置BOSS状态和攻击次数)
+    if (prefix === '怪物' && list.length > 0) {
+      const prototype = list[0];
+      newItem = {
+        ...prototype,
+        id: Date.now(),
+        name: `${prefix} ${list.length + 1}`,
+        isBoss: false, // 新增怪物默认非BOSS
+        attacksPerRound: 1 // 新增怪物默认攻击次数重置为1
+      };
+    }
+
+    setFunc([...list, newItem]);
   };
 
   const removeItem = (setFunc, list, id) => list.length > 1 && setFunc(list.filter(i => i.id !== id));
@@ -408,14 +424,7 @@ const DndCombatCalculator = () => {
                         <input type="number" value={manualTargetPlayerAC} onChange={(e) => setManualTargetPlayerAC(Number(e.target.value))} className="w-12 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-center text-slate-200 font-bold outline-none focus:border-red-500" />
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">玩家豁免</label>
-                      {isLinked ? (
-                        <span className="w-12 text-center text-indigo-300 font-bold font-mono">+{activePlayerStats.saveBonus}</span>
-                      ) : (
-                        <input type="number" value={manualTargetPlayerSaveBonus} onChange={(e) => setManualTargetPlayerSaveBonus(Number(e.target.value))} className="w-12 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-center text-indigo-300 font-bold outline-none focus:border-indigo-500" />
-                      )}
-                    </div>
+                    {/* 已移除玩家豁免输入框 */}
                     <div className="w-px h-6 bg-slate-700"></div>
                      <div className="flex items-center gap-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">玩家HP</label>
