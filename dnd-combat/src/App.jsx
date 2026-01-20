@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink } from 'lucide-react';
+import { Sword, Shield, Skull, Info, AlertTriangle, Users, Plus, Trash2, Zap, Crown, Calculator, X, Save, Upload, Link as LinkIcon, Unlink, Server, PlayCircle, Loader2, Target } from 'lucide-react';
 
-// --- 核心算法 (移至组件外，作为纯函数) ---
+// --- 核心算法 (本地纯函数) ---
 const calculateStats = (params, targetStats) => {
   const { 
     attackType, attackBonus, saveDC, halfOnSave, 
@@ -34,13 +34,189 @@ const calculateStats = (params, targetStats) => {
   return { dpr, maxDamage };
 };
 
-// --- 骰子计算器组件 (移至组件外) ---
+// --- 单体模拟结果弹窗 ---
+const SimulationModal = ({ onClose, simData }) => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [iterations, setIterations] = useState(100000);
+
+  const runSimulation = async () => {
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...simData, iterations }),
+      });
+      if (!response.ok) throw new Error('无法连接到 Python 后端');
+      const data = await response.json();
+      setResult(data);
+    } catch (err) { setError("连接失败：请确保 dnd_monte_carlo.py 已运行"); } finally { setLoading(false); }
+  };
+
+  useEffect(() => { runSimulation(); }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+          <h3 className="text-purple-400 font-bold flex items-center gap-2"><Server className="w-5 h-5"/> 单体伤害模拟</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="text-xs text-slate-400 bg-slate-900/50 p-2 rounded border border-slate-700/50 flex justify-between">
+            <span>攻击 +{simData.attackBonus} vs AC {simData.targetAC}</span>
+            <span>{simData.diceCount}d{simData.diceType}+{simData.damageMod}</span>
+          </div>
+          <div className="flex items-center gap-2 justify-center py-2">
+             <label className="text-xs text-slate-400">模拟次数:</label>
+             <select value={iterations} onChange={e => setIterations(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded text-xs p-1 outline-none text-slate-200">
+               <option value="10000">1万次</option>
+               <option value="100000">10万次</option>
+             </select>
+             <button onClick={runSimulation} disabled={loading} className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1 rounded flex items-center gap-1 transition-colors">{loading ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} 重新运行</button>
+          </div>
+          {error && <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded text-sm text-center">{error}</div>}
+          {result && (
+            <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in duration-300">
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center col-span-2">
+                <div className="text-slate-400 text-xs uppercase font-bold mb-1">期望伤害 (DPR)</div>
+                <div className="text-4xl font-bold text-purple-400">{result.avg_damage.toFixed(2)}</div>
+              </div>
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center"><div className="text-slate-400 text-xs uppercase font-bold mb-1">命中率</div><div className="text-xl font-bold text-green-400">{result.hit_rate.toFixed(1)}%</div></div>
+              <div className="bg-slate-700/50 p-3 rounded border border-slate-600 text-center"><div className="text-slate-400 text-xs uppercase font-bold mb-1">暴击率</div><div className="text-xl font-bold text-amber-400">{result.crit_rate.toFixed(2)}%</div></div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 团战模拟结果弹窗 (新) ---
+const EncounterSimModal = ({ onClose, teamA, teamB, statsA, statsB }) => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const runSimulation = async () => {
+    setLoading(true); setError(null); setResult(null);
+    
+    // 注入对手的防御数据，以便 Python 后端使用
+    // 注意：Python后端使用的是简化逻辑，即假设怪物打玩家时，所有玩家防御值取平均
+    // 实际上更复杂的模拟需要每个怪打特定人，这里我们把平均值注入到每个单位里传过去
+    const enrichedTeamA = teamA.map(u => ({ ...u, ac: statsA.ac, saveBonus: statsA.saveBonus }));
+    const enrichedTeamB = teamB.map(u => ({ ...u, ac: statsB.ac, saveBonus: statsB.saveBonus }));
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/simulate-encounter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamA: enrichedTeamA, teamB: enrichedTeamB }),
+      });
+      if (!response.ok) throw new Error('无法连接到 Python 后端');
+      const data = await response.json();
+      setResult(data);
+    } catch (err) { setError("连接失败：请确保 dnd_monte_carlo.py 已运行"); } finally { setLoading(false); }
+  };
+
+  useEffect(() => { runSimulation(); }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-slate-800 rounded-xl border border-slate-600 shadow-2xl w-full max-w-lg overflow-hidden">
+        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+          <h3 className="text-indigo-400 font-bold flex items-center gap-2"><Target className="w-5 h-5"/> 全局战役模拟 (10,000次)</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="flex justify-between items-center px-4">
+             <div className="text-center">
+               <div className="text-xl font-bold text-amber-400">玩家队伍</div>
+               <div className="text-xs text-slate-500">{teamA.length} 人 (HP {statsA.totalHP})</div>
+             </div>
+             <div className="text-slate-600 font-bold">VS</div>
+             <div className="text-center">
+               <div className="text-xl font-bold text-red-400">怪物遭遇</div>
+               <div className="text-xs text-slate-500">{teamB.length} 只 (HP {statsB.totalHP})</div>
+             </div>
+          </div>
+
+          {loading && <div className="py-8 flex justify-center text-indigo-400"><Loader2 className="w-8 h-8 animate-spin"/></div>}
+          {error && <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded text-sm text-center">{error}</div>}
+          
+          {result && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700 text-center relative overflow-hidden">
+                {/* 胜率进度条背景 */}
+                <div className="absolute top-0 bottom-0 left-0 bg-amber-500/10 transition-all duration-1000" style={{width: `${result.win_rate}%`}}></div>
+                
+                <div className="relative z-10">
+                  <div className="text-sm text-slate-400 font-bold uppercase tracking-wider mb-2">玩家胜率 (Win Rate)</div>
+                  <div className={`text-5xl font-black ${result.win_rate > 80 ? 'text-green-400' : result.win_rate > 50 ? 'text-amber-400' : 'text-red-500'}`}>
+                    {result.win_rate.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-slate-500 mt-2">模拟耗时: {result.duration.toFixed(3)}s</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center">
+                   <div className="text-xs text-slate-400 mb-1">平均战斗时长</div>
+                   <div className="text-xl font-bold text-white">{result.avg_rounds.toFixed(1)} <span className="text-sm font-normal text-slate-500">轮</span></div>
+                 </div>
+                 <div className="bg-slate-700/30 p-3 rounded border border-slate-600 text-center">
+                   <div className="text-xs text-slate-400 mb-1">团灭风险</div>
+                   <div className={`text-xl font-bold ${(100 - result.win_rate) > 50 ? 'text-red-400' : 'text-green-400'}`}>{(100 - result.win_rate).toFixed(1)}%</div>
+                 </div>
+              </div>
+
+              {/* 新增：详细伤害统计面板 */}
+              <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 p-3">
+                <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700">
+                  <div className="text-center space-y-1">
+                    <div className="text-amber-400 font-bold text-xs uppercase mb-2">玩家队伍表现</div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>场均总伤:</span>
+                      <span className="text-white font-mono">{result.avg_total_damage_a.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>实战 DPR:</span>
+                      <span className="text-white font-mono">{result.avg_dpr_a.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <div className="text-red-400 font-bold text-xs uppercase mb-2">怪物队伍表现</div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>场均总伤:</span>
+                      <span className="text-white font-mono">{result.avg_total_damage_b.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 px-2">
+                      <span>实战 DPR:</span>
+                      <span className="text-white font-mono">{result.avg_dpr_b.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <button onClick={runSimulation} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><PlayCircle className="w-3 h-3"/> 再次模拟</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 骰子计算器组件 (不变) ---
 const DiceCalculator = ({ onClose }) => {
   const [dCount, setDCount] = useState(1);
   const [dType, setDType] = useState(8);
   const [dMod, setDMod] = useState(0);
   const avg = (dCount * (dType + 1) / 2) + dMod;
-
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden">
@@ -52,9 +228,7 @@ const DiceCalculator = ({ onClose }) => {
           <div className="flex items-center justify-center gap-2">
             <input type="number" min="1" value={dCount} onChange={e=>setDCount(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
             <span className="text-slate-500 font-bold">d</span>
-            <select value={dType} onChange={e=>setDType(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded p-2 text-lg font-bold outline-none focus:border-amber-500">
-              {[4,6,8,10,12,20,100].map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <select value={dType} onChange={e=>setDType(Number(e.target.value))} className="bg-slate-900 border border-slate-600 rounded p-2 text-lg font-bold outline-none focus:border-amber-500">{[4,6,8,10,12,20,100].map(d => <option key={d} value={d}>{d}</option>)}</select>
             <span className="text-slate-500 font-bold">+</span>
             <input type="number" value={dMod} onChange={e=>setDMod(Number(e.target.value))} className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-lg font-bold outline-none focus:border-amber-500"/>
           </div>
@@ -69,113 +243,49 @@ const DiceCalculator = ({ onClose }) => {
   );
 };
 
-// --- 通用输入卡片组件 (移至组件外) ---
-const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats }) => {
+// --- UnitCard (不变) ---
+const UnitCard = ({ item, index, isMonster, updateFunc, removeFunc, showDelete, targetStats, onSimulate }) => {
   return (
     <div className={`bg-slate-800 rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-all relative ${item.isBoss ? 'border-amber-500/50 shadow-amber-900/20' : 'border-slate-700'}`}>
-      {/* Boss 标记 */}
-      {item.attacksPerRound > 1 && item.isBoss && (
-        <div className="absolute top-0 right-0 bg-red-900/50 text-red-300 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-red-800 flex items-center gap-1 z-10">
-          <Zap className="w-3 h-3" /> x{item.attacksPerRound}
-        </div>
-      )}
-
-      {/* 头部：名字与核心操作 */}
+      {item.attacksPerRound > 1 && item.isBoss && <div className="absolute top-0 right-0 bg-red-900/50 text-red-300 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-red-800 flex items-center gap-1 z-10"><Zap className="w-3 h-3" /> x{item.attacksPerRound}</div>}
       <div className={`p-3 border-b flex flex-wrap gap-2 justify-between items-center ${item.isBoss ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
         <div className="flex items-center gap-3 flex-1 min-w-[200px]">
           <span className="bg-slate-700 text-slate-400 text-xs px-1.5 py-0.5 rounded font-mono">{index + 1}</span>
           <input type="text" value={item.name} onChange={(e) => updateFunc(item.id, 'name', e.target.value)} className="bg-transparent border-none text-sm font-bold text-slate-200 focus:ring-0 w-24 placeholder-slate-600" />
-          
-          {isMonster && (
-            <button onClick={() => updateFunc(item.id, 'isBoss', !item.isBoss)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all ${item.isBoss ? 'bg-amber-500 text-slate-900 border-amber-400' : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
-              <Crown className="w-3 h-3" fill={item.isBoss ? "currentColor" : "none"} /> {item.isBoss ? "BOSS" : "普通"}
-            </button>
-          )}
-
+          {isMonster && <button onClick={() => updateFunc(item.id, 'isBoss', !item.isBoss)} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-all ${item.isBoss ? 'bg-amber-500 text-slate-900 border-amber-400' : 'bg-slate-800 text-slate-500 border-slate-600'}`}><Crown className="w-3 h-3" fill={item.isBoss ? "currentColor" : "none"} /> {item.isBoss ? "BOSS" : "普通"}</button>}
           <div className="flex bg-slate-900 rounded p-0.5 border border-slate-700">
             <button onClick={() => updateFunc(item.id, 'attackType', 'attack')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'attack' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>物理</button>
             <button onClick={() => updateFunc(item.id, 'attackType', 'save')} className={`px-2 py-0.5 text-[10px] rounded ${item.attackType === 'save' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>法术</button>
           </div>
         </div>
-
         <div className="flex items-center gap-3">
-           <span className="text-xs text-slate-500 font-mono">DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>
-             {calculateStats(item, targetStats).dpr.toFixed(1)}
-           </span></span>
+           <div className="text-xs text-slate-500 font-mono flex items-center gap-2">
+             <span>DPR: <span className={`${isMonster ? 'text-red-400' : 'text-amber-400'} font-bold`}>{calculateStats(item, targetStats).dpr.toFixed(1)}</span></span>
+             {item.attackType === 'attack' && <button onClick={() => onSimulate(item, targetStats)} className="bg-purple-900/50 hover:bg-purple-700 text-purple-200 border border-purple-800 p-1 rounded" title="单体蒙特卡洛验证"><Server className="w-3 h-3" /></button>}
+           </div>
            {showDelete && <button onClick={() => removeFunc(item.id)} className="text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}
         </div>
       </div>
-
-      {/* 核心数据配置 */}
       <div className="p-3 space-y-3">
-        {/* 第一行：防御属性配置 */}
         <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
-          <div className="flex items-center gap-1">
-            <Shield className="w-3 h-3 text-slate-500"/>
-            <label className="text-[10px] text-slate-400">AC</label>
-            <input type="number" value={item.ac || 10} onChange={(e) => updateFunc(item.id, 'ac', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-          </div>
-          <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
-            <div className="text-[10px] text-slate-400 font-bold">HP</div>
-            <input type="number" value={item.hp || 10} onChange={(e) => updateFunc(item.id, 'hp', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-          </div>
-          <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
-            <div className="text-[10px] text-slate-400">Save+</div>
-            <input type="number" value={item.saveBonus || 0} onChange={(e) => updateFunc(item.id, 'saveBonus', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/>
-          </div>
+          <div className="flex items-center gap-1"><Shield className="w-3 h-3 text-slate-500"/><label className="text-[10px] text-slate-400">AC</label><input type="number" value={item.ac || 10} onChange={(e) => updateFunc(item.id, 'ac', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/></div>
+          <div className="flex items-center gap-1 border-l border-slate-700 pl-2"><div className="text-[10px] text-slate-400 font-bold">HP</div><input type="number" value={item.hp || 10} onChange={(e) => updateFunc(item.id, 'hp', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/></div>
+          <div className="flex items-center gap-1 border-l border-slate-700 pl-2"><div className="text-[10px] text-slate-400">Save+</div><input type="number" value={item.saveBonus || 0} onChange={(e) => updateFunc(item.id, 'saveBonus', Number(e.target.value))} className="w-full bg-transparent border-b border-slate-600 text-center text-xs font-bold text-slate-300 focus:border-slate-400 outline-none"/></div>
         </div>
-
-        {/* 第二行：攻击数据 */}
         <div className="grid grid-cols-4 gap-3">
-          <div className="col-span-1">
-            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">{item.attackType === 'attack' ? '命中加值' : '法术 DC'}</label>
-            {item.attackType === 'attack' ? (
-              <input type="number" value={item.attackBonus} onChange={(e) => updateFunc(item.id, 'attackBonus', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-            ) : (
-              <input type="number" value={item.saveDC} onChange={(e) => updateFunc(item.id, 'saveDC', Number(e.target.value))} className="w-full bg-indigo-900/30 border border-indigo-500/50 text-indigo-200 rounded px-2 py-1.5 text-sm outline-none focus:border-indigo-500" />
-            )}
-          </div>
-          <div className="col-span-2">
-            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">伤害骰</label>
-            <div className="flex gap-1">
-              <input type="number" min="1" value={item.diceCount} onChange={(e) => updateFunc(item.id, 'diceCount', Math.max(1, Number(e.target.value)))} className={`w-1/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-center text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-              <select value={item.diceType} onChange={(e) => updateFunc(item.id, 'diceType', Number(e.target.value))} className={`w-2/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500 text-center`}>
-                <option value="4">d4</option><option value="6">d6</option><option value="8">d8</option><option value="10">d10</option><option value="12">d12</option><option value="20">d20</option>
-              </select>
-            </div>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">固定伤</label>
-            <input type="number" value={item.damageMod} onChange={(e) => updateFunc(item.id, 'damageMod', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />
-          </div>
+          <div className="col-span-1"><label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">{item.attackType === 'attack' ? '命中加值' : '法术 DC'}</label>{item.attackType === 'attack' ? (<input type="number" value={item.attackBonus} onChange={(e) => updateFunc(item.id, 'attackBonus', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} />) : (<input type="number" value={item.saveDC} onChange={(e) => updateFunc(item.id, 'saveDC', Number(e.target.value))} className="w-full bg-indigo-900/30 border border-indigo-500/50 text-indigo-200 rounded px-2 py-1.5 text-sm outline-none focus:border-indigo-500" />)}</div>
+          <div className="col-span-2"><label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">伤害骰</label><div className="flex gap-1"><input type="number" min="1" value={item.diceCount} onChange={(e) => updateFunc(item.id, 'diceCount', Math.max(1, Number(e.target.value)))} className={`w-1/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-center text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} /><select value={item.diceType} onChange={(e) => updateFunc(item.id, 'diceType', Number(e.target.value))} className={`w-2/3 bg-slate-900 border border-slate-600 rounded px-1 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500 text-center`}><option value="4">d4</option><option value="6">d6</option><option value="8">d8</option><option value="10">d10</option><option value="12">d12</option><option value="20">d20</option></select></div></div>
+          <div className="col-span-1"><label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">固定伤</label><input type="number" value={item.damageMod} onChange={(e) => updateFunc(item.id, 'damageMod', Number(e.target.value))} className={`w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm outline-none focus:border-${isMonster ? 'red' : 'amber'}-500`} /></div>
         </div>
-
-        {/* 第三行：状态选项 */}
         <div className="border-t border-slate-700/50 pt-2 flex items-center gap-3">
           <div className="flex-1">
             {item.attackType === 'attack' ? (
               <div className="flex gap-1">
-                {['normal', 'advantage', 'disadvantage'].map(state => (
-                  <button key={state} onClick={() => updateFunc(item.id, 'advantageState', state)} className={`flex-1 py-1 text-[10px] rounded border ${item.advantageState === state 
-                    ? (state === 'normal' ? 'bg-slate-700 border-slate-500' : state === 'advantage' ? 'bg-green-900/40 text-green-400 border-green-600' : 'bg-red-900/40 text-red-400 border-red-600') 
-                    : 'bg-slate-900 text-slate-500 border-slate-700'}`}>
-                    {state === 'normal' ? '正常' : state === 'advantage' ? '优势' : '劣势'}
-                  </button>
-                ))}
+                {['normal', 'advantage', 'disadvantage'].map(state => (<button key={state} onClick={() => updateFunc(item.id, 'advantageState', state)} className={`flex-1 py-1 text-[10px] rounded border ${item.advantageState === state ? (state === 'normal' ? 'bg-slate-700 border-slate-500' : state === 'advantage' ? 'bg-green-900/40 text-green-400 border-green-600' : 'bg-red-900/40 text-red-400 border-red-600') : 'bg-slate-900 text-slate-500 border-slate-700'}`}>{state === 'normal' ? '正常' : state === 'advantage' ? '优势' : '劣势'}</button>))}
               </div>
-            ) : (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={item.halfOnSave} onChange={(e) => updateFunc(item.id, 'halfOnSave', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500"/>
-                <span className="text-xs text-indigo-200">豁免成功半伤</span>
-              </label>
-            )}
+            ) : (<label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={item.halfOnSave} onChange={(e) => updateFunc(item.id, 'halfOnSave', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500"/><span className="text-xs text-indigo-200">豁免成功半伤</span></label>)}
           </div>
-          {(!isMonster || item.isBoss) && (
-            <div className="flex items-center gap-1 bg-slate-900/50 rounded border border-slate-600 px-2 py-0.5">
-              <span className="text-[10px] text-slate-400">{item.attackType === 'attack' ? '攻击' : '施法'}:</span>
-              <input type="number" min="1" value={item.attacksPerRound} onChange={(e) => updateFunc(item.id, 'attacksPerRound', Math.max(1, Number(e.target.value)))} className="w-8 bg-transparent text-center text-xs font-bold text-white outline-none border-b border-slate-500 focus:border-white" />
-            </div>
-          )}
+          {(!isMonster || item.isBoss) && <div className="flex items-center gap-1 bg-slate-900/50 rounded border border-slate-600 px-2 py-0.5"><span className="text-[10px] text-slate-400">{item.attackType === 'attack' ? '攻击' : '施法'}:</span><input type="number" min="1" value={item.attacksPerRound} onChange={(e) => updateFunc(item.id, 'attacksPerRound', Math.max(1, Number(e.target.value)))} className="w-8 bg-transparent text-center text-xs font-bold text-white outline-none border-b border-slate-500 focus:border-white" /></div>}
         </div>
       </div>
     </div>
@@ -186,23 +296,25 @@ const DndCombatCalculator = () => {
   const [mode, setMode] = useState('player_analysis');
   const [showDiceTool, setShowDiceTool] = useState(false);
   
-  // --- 联动开关 ---
+  // 弹窗状态
+  const [showSimModal, setShowSimModal] = useState(false);
+  const [simData, setSimData] = useState(null); // 单体模拟数据
+  const [showEncounterModal, setShowEncounterModal] = useState(false); // 团战模拟弹窗
+  
   const [isLinked, setIsLinked] = useState(false);
 
-  // --- 玩家数据 ---
   const [players, setPlayers] = useState([
     { 
-      id: 1, name: '法师', 
-      attackType: 'save', attackBonus: 7, saveDC: 15, halfOnSave: true,
-      diceCount: 8, diceType: 6, damageMod: 0, attacksPerRound: 1, advantageState: 'normal',
-      ac: 12, hp: 40, saveBonus: 2
+      id: 1, name: '战士', 
+      attackType: 'attack', attackBonus: 7, saveDC: 15, halfOnSave: true,
+      diceCount: 2, diceType: 6, damageMod: 4, attacksPerRound: 2, advantageState: 'normal',
+      ac: 16, hp: 35, saveBonus: 2
     }
   ]);
   
   const [manualMonsterAC, setManualMonsterAC] = useState(15);
   const [manualMonsterSaveBonus, setManualMonsterSaveBonus] = useState(2);
 
-  // --- 怪物数据 ---
   const [monsters, setMonsters] = useState([
     { 
       id: 1, name: '地精首领', 
@@ -213,18 +325,28 @@ const DndCombatCalculator = () => {
   ]);
 
   const [manualTargetPlayerAC, setManualTargetPlayerAC] = useState(15);
-  const [manualTargetPlayerSaveBonus, setManualTargetPlayerSaveBonus] = useState(3);
   const [manualTargetPlayerHP, setManualTargetPlayerHP] = useState(25);
 
-  // --- 动态计算 ---
   const [activeMonsterStats, setActiveMonsterStats] = useState({ ac: 15, saveBonus: 2, totalHP: 45 });
-  const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 3, totalHP: 25 });
+  const [activePlayerStats, setActivePlayerStats] = useState({ ac: 15, saveBonus: 0, totalHP: 25 });
 
   const [partyTotalDPR, setPartyTotalDPR] = useState(0);
   const [encounterStats, setEncounterStats] = useState({ totalDPR: 0, highestMaxDamage: 0, bossName: '' });
 
-  // --- 存档 ---
   const fileInputRef = useRef(null);
+
+  const handleOpenSim = (item, targetStats) => {
+    setSimData({
+      attackBonus: item.attackBonus,
+      targetAC: targetStats.ac,
+      diceCount: item.diceCount,
+      diceType: item.diceType,
+      damageMod: item.damageMod,
+      attacksPerRound: item.attacksPerRound,
+      advantageState: item.advantageState
+    });
+    setShowSimModal(true);
+  };
 
   const handleSave = () => {
     const data = { players, monsters, isLinked, timestamp: Date.now() };
@@ -254,9 +376,7 @@ const DndCombatCalculator = () => {
     reader.readAsText(file);
   };
 
-  // --- Effect: 联动逻辑 ---
   useEffect(() => {
-    // 计算平均值
     const pAC = players.reduce((sum, p) => sum + (p.ac || 10), 0) / players.length;
     const pSave = players.reduce((sum, p) => sum + (p.saveBonus || 0), 0) / players.length;
     const pTotalHP = players.reduce((sum, p) => sum + (p.hp || 10), 0);
@@ -271,7 +391,7 @@ const DndCombatCalculator = () => {
 
     const currentPlayerTarget = isLinked
       ? { ac: Math.round(pAC), saveBonus: Math.round(pSave), totalHP: pTotalHP }
-      : { ac: manualTargetPlayerAC, saveBonus: manualTargetPlayerSaveBonus, totalHP: manualTargetPlayerHP };
+      : { ac: manualTargetPlayerAC, saveBonus: 0, totalHP: manualTargetPlayerHP };
 
     setActiveMonsterStats(currentMonsterTarget);
     setActivePlayerStats(currentPlayerTarget);
@@ -292,9 +412,8 @@ const DndCombatCalculator = () => {
     });
     setEncounterStats({ totalDPR: mTotalDPR, highestMaxDamage: highestMax, bossName: boss });
 
-  }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerSaveBonus, manualTargetPlayerHP]);
+  }, [players, monsters, isLinked, manualMonsterAC, manualMonsterSaveBonus, manualTargetPlayerAC, manualTargetPlayerHP]);
 
-  // --- CRUD 操作 ---
   const updateItem = (setFunc, list, id, field, value) => {
     setFunc(list.map(item => {
       if (item.id !== id) return item;
@@ -308,20 +427,37 @@ const DndCombatCalculator = () => {
 
   const addItem = (setFunc, list, prefix, defaultType) => {
     if (list.length >= 8) return;
-    setFunc([...list, { 
+    
+    let newItem = { 
       id: Date.now(), name: `${prefix} ${list.length + 1}`, 
       attackType: defaultType, attackBonus: 5, saveDC: 13, halfOnSave: false,
       diceCount: 1, diceType: 8, damageMod: 3, attacksPerRound: 1, advantageState: 'normal',
       ac: 13, hp: 30, saveBonus: 2 
-    }]);
+    };
+
+    if (prefix === '怪物' && list.length > 0) {
+      const prototype = list[0];
+      newItem = {
+        ...prototype,
+        id: Date.now(),
+        name: `${prefix} ${list.length + 1}`,
+        isBoss: false, 
+        attacksPerRound: 1 
+      };
+    }
+
+    setFunc([...list, newItem]);
   };
 
   const removeItem = (setFunc, list, id) => list.length > 1 && setFunc(list.filter(i => i.id !== id));
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-10">
-      {/* 弹窗 & 隐藏文件输入 */}
+      {/* 各种弹窗 */}
       {showDiceTool && <DiceCalculator onClose={() => setShowDiceTool(false)} />}
+      {showSimModal && simData && <SimulationModal simData={simData} onClose={() => setShowSimModal(false)} />}
+      {showEncounterModal && <EncounterSimModal onClose={() => setShowEncounterModal(false)} teamA={players} teamB={monsters} statsA={activePlayerStats} statsB={activeMonsterStats} />}
+      
       <input type="file" ref={fileInputRef} onChange={handleLoad} className="hidden" accept=".json" />
 
       {/* 顶部导航 */}
@@ -365,7 +501,7 @@ const DndCombatCalculator = () => {
               <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2 text-amber-400"><Users className="w-5 h-5" /> 玩家队伍配置</h2>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {/* 全局设置：仅在非联动模式下可编辑 */}
+                  {/* 全局设置 */}
                   <div className={`p-2 rounded-lg border flex items-center gap-3 shadow-sm transition-all ${isLinked ? 'bg-indigo-900/20 border-indigo-500/30 opacity-80' : 'bg-slate-800 border-slate-700'}`}>
                     <div className="flex items-center gap-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">目标AC</label>
@@ -390,7 +526,7 @@ const DndCombatCalculator = () => {
               </div>
               <div className="space-y-3">
                 {players.map((p, index) => (
-                  <UnitCard key={p.id} item={p} index={index} isMonster={false} updateFunc={(id, f, v) => updateItem(setPlayers, players, id, f, v)} removeFunc={(id) => removeItem(setPlayers, players, id)} showDelete={players.length > 1} targetStats={activeMonsterStats} />
+                  <UnitCard key={p.id} item={p} index={index} isMonster={false} updateFunc={(id, f, v) => updateItem(setPlayers, players, id, f, v)} removeFunc={(id) => removeItem(setPlayers, players, id)} showDelete={players.length > 1} targetStats={activeMonsterStats} onSimulate={handleOpenSim} />
                 ))}
               </div>
             </div>
@@ -408,14 +544,6 @@ const DndCombatCalculator = () => {
                         <input type="number" value={manualTargetPlayerAC} onChange={(e) => setManualTargetPlayerAC(Number(e.target.value))} className="w-12 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-center text-slate-200 font-bold outline-none focus:border-red-500" />
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">玩家豁免</label>
-                      {isLinked ? (
-                        <span className="w-12 text-center text-indigo-300 font-bold font-mono">+{activePlayerStats.saveBonus}</span>
-                      ) : (
-                        <input type="number" value={manualTargetPlayerSaveBonus} onChange={(e) => setManualTargetPlayerSaveBonus(Number(e.target.value))} className="w-12 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-center text-indigo-300 font-bold outline-none focus:border-indigo-500" />
-                      )}
-                    </div>
                     <div className="w-px h-6 bg-slate-700"></div>
                      <div className="flex items-center gap-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">玩家HP</label>
@@ -431,7 +559,7 @@ const DndCombatCalculator = () => {
               </div>
               <div className="space-y-3">
                 {monsters.map((m, index) => (
-                  <UnitCard key={m.id} item={m} index={index} isMonster={true} updateFunc={(id, f, v) => updateItem(setMonsters, monsters, id, f, v)} removeFunc={(id) => removeItem(setMonsters, monsters, id)} showDelete={monsters.length > 1} targetStats={activePlayerStats} />
+                  <UnitCard key={m.id} item={m} index={index} isMonster={true} updateFunc={(id, f, v) => updateItem(setMonsters, monsters, id, f, v)} removeFunc={(id) => removeItem(setMonsters, monsters, id)} showDelete={monsters.length > 1} targetStats={activePlayerStats} onSimulate={handleOpenSim} />
                 ))}
               </div>
             </div>
@@ -444,9 +572,15 @@ const DndCombatCalculator = () => {
           {/* 当开启联动时，显示战斗模拟结果 */}
           {isLinked && (
             <div className="bg-indigo-950/40 rounded-xl border border-indigo-500/30 overflow-hidden shadow-lg mb-6">
-              <div className="bg-indigo-900/30 p-3 border-b border-indigo-500/20 flex items-center gap-2">
-                <Sword className="text-indigo-400 w-4 h-4"/>
-                <h3 className="font-bold text-indigo-100 text-sm">模拟战报 (Simulated Encounter)</h3>
+              <div className="bg-indigo-900/30 p-3 border-b border-indigo-500/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sword className="text-indigo-400 w-4 h-4"/>
+                  <h3 className="font-bold text-indigo-100 text-sm">模拟战报 (Simulated Encounter)</h3>
+                </div>
+                {/* 团战模拟按钮 */}
+                <button onClick={() => setShowEncounterModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors">
+                  <Zap className="w-3 h-3 text-yellow-300 fill-current" /> 运行蒙特卡洛全战役模拟
+                </button>
               </div>
               <div className="p-4 grid grid-cols-2 gap-4 text-center">
                 <div>
@@ -463,6 +597,7 @@ const DndCombatCalculator = () => {
             </div>
           )}
 
+          {/* ... (后续结果面板保持不变) ... */}
           {mode === 'player_analysis' ? (
             <>
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl relative overflow-hidden group">
