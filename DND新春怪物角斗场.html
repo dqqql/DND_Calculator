@@ -1,0 +1,713 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>DND新春怪物角斗场</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column {
+	padding: 0 1em;
+}
+
+.column:first-child {
+	padding-left: 0;
+}
+
+.column:last-child {
+	padding-right: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+	border-collapse: collapse;
+}
+
+table {
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body><article id="308697ff-23be-80b1-b391-ecbc60ffbda0" class="page sans"><header><div class="page-header-icon undefined"><span class="icon">🧨</span></div><h1 class="page-title" dir="auto">DND新春怪物角斗场</h1><p class="page-description" dir="auto"></p></header><div class="page-body"><div style="display:contents" dir="auto"><h1 id="308697ff-23be-8143-8e82-d54418c45538" class="">🎉 规则书 🎲</h1></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-81cc-b3b2-cc22fa554ac2" class="">🏮 欢迎来到新春怪物角斗场！</h2></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8140-b240-d70613477912" class=""><strong>红灯笼高挂，鞭炮声声，又是一年新春到！</strong>在这辞旧迎新的时刻，龙城的魔法学院举办了一场别开生面的庆典活动——<strong>新春怪物角斗场</strong>！作为被选中的“怪物指挥官”，你将通过抽卡组建你的军团，利用策略、经济和一点点运气，争夺“年兽王”的称号！</p></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-8177-aec8-f952e5e7e119"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-812d-8112-ece7f23cba5e" class="">🎯 活动概述</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-815f-a352-e1785c7057d6" class="">这是什么游戏？</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8134-9650-d1ba29dacfa3" class="">这是一个<strong>DND对战活动</strong>，你将扮演一位“怪物指挥官”，通过<strong>XP预算</strong>组建怪物队伍，与队友共同面对对方的怪物大军。共分两轮，第一轮是初试身手，积攒“年兽币”，囤积资源。在第二轮中操控更强的怪物，使用更多的物品进行终极战斗！</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8123-8eab-fcf9a4fd3c12" class="">你需要做什么？</h3></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-8126-916e-f90ce2ee55d9" class="numbered-list" start="1"><li><strong>构筑军团</strong>：在预算内挑选怪物，组建你的战斗队伍</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-814a-85f1-e269f59b95e2" class="numbered-list" start="2"><li><strong>赚取年兽币</strong>：通过击杀、生存和理财积累财富</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-81fb-9495-ff54fc4b99b2" class="numbered-list" start="3"><li><strong>商店购物</strong>：在庙会中购买道具和升级</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-8183-a055-f938f998f634" class="numbered-list" start="4"><li><strong>最终决战</strong>：活到最后，成为“年兽王”！</li></ol></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8157-b5c1-cf82f8f6e39f" class="">游戏特色</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81d8-8ae1-df698bf447e6" class="bulleted-list"><li style="list-style-type:disc"><strong>自走棋式抽卡</strong>：每场战斗抽取3张怪物卡，自由组建队伍</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81de-acfb-f6156fbb813d" class="bulleted-list"><li style="list-style-type:disc"><strong>春节主题经济</strong>：使用“年兽币”在庙会商店购物</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8173-abc0-e6ebe10afd3b" class="bulleted-list"><li style="list-style-type:disc"><strong>Buff系统</strong>：第一轮地煞池，第二轮天罡池</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8137-bbf1-cb2c1dd52c9d" class="bulleted-list"><li style="list-style-type:disc"><strong>指挥官回合</strong>：化身战场指挥官，使用道具影响战局</li></ul></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-8150-ab7a-ed1aa8377541"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-81b0-9689-e3933bfa1efc" class="">👥游戏规则</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-810d-b7ad-d70488cfd855" class="">指挥官（玩家）的角色</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8173-ae3e-d794466f8fdb" class="">你<strong>不直接上场战斗</strong>，而是化身为战场的“指挥官”，通过以下方式影响战局：</p></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-819b-a8f9-efcc2f4d9221" class="numbered-list" start="1"><li><strong>组建军团</strong>：在预算内选择怪物</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-81cf-a2b9-cdbcc0ca43f3" class="numbered-list" start="2"><li><strong>抽卡决策</strong>：保留有用的卡，弃掉不需要的卡</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-814b-8185-cbb31e4293c3" class="numbered-list" start="3"><li><strong>经济管理</strong>：赚取年兽币，合理消费</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="308697ff-23be-8147-9c10-c8620c6a9959" class="numbered-list" start="4"><li><strong>道具使用</strong>：在指挥官回合使用商店道具</li></ol></div><div style="display:contents" dir="auto"><h3 id="309697ff-23be-80b5-83a6-e2109d735b3e" class="">怪物池</h3></div><div style="display:contents" dir="auto"><p id="309697ff-23be-80ee-b60c-e9348740e44b" class="">一轮可能会有若干场战斗，但同一轮中怪物池固定。</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8161-9520-fa0ab108d5e2" class="">指挥官回合</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81bb-a89c-e1a75df374a8" class="">战斗中<strong>恒定先攻 20</strong> 作为“指挥官专属回合”（平局则怪物先动）。进入指挥官回合时，每位玩家<strong>可以且仅能打出 1 个锦囊</strong>。玩家之间顺序由d20决定。</p></div><div style="display:contents" dir="auto"><h3 id="309697ff-23be-80a6-8f19-e3a70f0a5d70" class="">游戏流程</h3></div><div style="display:contents" dir="auto"><p id="309697ff-23be-8033-a009-ddbb0c82a049" class="">1.按照轮次对应的buff池进行抽取buff</p></div><div style="display:contents" dir="auto"><p id="309697ff-23be-8014-89b5-e71aa337dd3e" class="">2.抽取怪物卡并放置，回收xp</p></div><div style="display:contents" dir="auto"><p id="309697ff-23be-80b3-97e5-e3633c9abf5a" class="">3.开始战斗</p></div><div style="display:contents" dir="auto"><p id="309697ff-23be-804f-94f1-d5fb77239ceb" class="">4.进入庙会环节，购物与兑换xp。</p></div><div style="display:contents" dir="auto"><p id="309697ff-23be-8027-8476-d5c516894baa" class="">5.等待下一场战斗或进入下一轮</p></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-8168-96f4-c581631afb37"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-8114-b5a4-fc9b327720d4" class="">⚔️ 规则解释</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8122-b121-ed895da4a848" class="">1. XP预算</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81d7-bd60-d30747a1a1af" class="">每个怪物都有XP价格，你的队伍总价不能超过预算：<br/>- <strong>第一轮预算</strong>：<strong>300 XP</strong><br/>- <strong>第二轮预算</strong>：<strong>1,800 XP</strong>（基础300 + 系统补给1500 + 商店升级）</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8140-b0c1-f322140be0bf" class="">2. 抽卡与弃牌</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81cf-a79a-eca391765b45" class="bulleted-list"><li style="list-style-type:disc">每场战斗开始时从怪物池抽取 <strong>3张</strong> 卡牌</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8177-b856-cf3119182de6" class="bulleted-list"><li style="list-style-type:disc">你可以：选择任意张怪物卡，然后根据XP购买任意数量的该怪物</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81e5-8f6a-c0c9b18926cc" class="bulleted-list"><li style="list-style-type:disc">或者：放弃任意张怪物卡，每放弃一张获得 2<strong>枚年兽币</strong></li></ul></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81a6-848d-e196016b16cc" class="">3. 同类溢价税 ⚠️</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81f6-a1fb-f15da66d3fe1" class=""><strong>重要规则！</strong> 购买同名怪物时，价格会越来越贵！<br/>- 第 1 只：<strong>原价</strong><br/>- 第 2 只：<strong>原价的两倍</strong><br/>- 第 3 只：<strong>原价的三倍</strong></p></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8120-8a56-ef36de6bafe6" class=""><strong>示例</strong>：购买哥布林（50 XP）<br/>第1只：50 XP</p></div><div style="display:contents" dir="auto"><p id="308697ff-23be-80db-9afd-da7467c39722" class="">第2只：100xp</p></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8085-bf04-ecd324bfce7c" class="">第3只：150xp</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81e0-beeb-d2ec57c12851" class="">4. 多单位控制</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81bc-89cc-c28900bfa5e9" class="bulleted-list"><li style="list-style-type:disc"><strong>小队共享先攻</strong>：同一个玩家的同类型怪物共享一个先攻值</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-814c-8e1e-d9b715edd5fb" class="bulleted-list"><li style="list-style-type:disc"><strong>存活判定</strong>：只要一只怪物存活，整队就算存活</li></ul></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-8171-a344-c29742e60fbb"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-8178-b3db-f6c277960a84" class="">💰 经济系统</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8111-9b14-f0c5638a951f" class="">年兽币是什么？</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8124-ac5f-d16d4cf428f5" class="">年兽币是商店购物的唯一货币，象征着你在角斗场中的财富和声望。</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-816e-81fc-e6016d5fe81f" class="">如何赚钱？</h3></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81f7-bd40-e52f5567c8d2" class="">1. 击杀悬赏（动态赏金）</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81a2-add0-eec4c3e0dfdf" class="">根据击杀怪物的强度获得不同赏金：</p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-818b-a0a8-c12768de6131" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-812e-831a-f5e063c56fa9"><th id="Xnj&lt;" class="simple-table-header-color simple-table-header">怪物级别</th><th id="]:e?" class="simple-table-header-color simple-table-header">XP范围</th><th id="{Z~^" class="simple-table-header-color simple-table-header">赏金</th><th id="?&gt;fl" class="simple-table-header-color simple-table-header">示例怪物</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8184-b917-d0eeeda3e8fe"><td id="Xnj&lt;" class=""><strong>炮灰级</strong></td><td id="]:e?" class="">0-100 XP</td><td id="{Z~^" class=""><strong>1 币</strong></td><td id="?&gt;fl" class="">哥布林、兽人</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8165-a1ab-dbac01e16c5b"><td id="Xnj&lt;" class=""><strong>精英级</strong></td><td id="]:e?" class="">200-450 XP</td><td id="{Z~^" class=""><strong>2 币</strong></td><td id="?&gt;fl" class="">棕熊、食人魔</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-819b-8785-effe0fdef988"><td id="Xnj&lt;" class=""><strong>首领级</strong></td><td id="]:e?" class="">700-1100 XP</td><td id="{Z~^" class=""><strong>5 币</strong></td><td id="?&gt;fl" class="">枭熊、双头巨人</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8197-a9a2-c6e373015202"><td id="Xnj&lt;" class=""><strong>传奇级</strong></td><td id="]:e?" class="">1800+ XP</td><td id="{Z~^" class=""><strong>8 币</strong></td><td id="?&gt;fl" class="">角斗士、惑控师</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><blockquote id="308697ff-23be-81cb-b11e-dfcb83022046" class=""><strong>判定规则</strong>：最后一击者得币，召唤物/衍生物无赏金</blockquote></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-813c-9d1f-c9f887f5e696" class="">2. 基础奖励</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-814f-a2e5-e0632c56071f" class="bulleted-list"><li style="list-style-type:disc">每轮保底奖励：<strong>+5 币</strong></li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81a5-a8f4-d4eb9113d354" class="bulleted-list"><li style="list-style-type:disc">生存奖（活到战斗结束）：<strong>+3 币</strong></li></ul></div><div style="display:contents" dir="auto"><ul id="309697ff-23be-80b6-950e-f9d13db61a01" class="bulleted-list"><li style="list-style-type:disc">放弃任意张怪物卡，每放弃一张获得 2<strong>枚年兽币</strong></li></ul></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81a9-a0a1-ecf2912cb469" class="">3. 春节红包（低保机制）</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81cf-b9f1-d1fb1d5322ac" class="">如果一场战斗你第一个出局，系统会发放低保<strong>4币</strong>，确保你有资金参与下一场庙会。</p></div><div style="display:contents" dir="auto"><h3 id="309697ff-23be-800d-8217-e72b0715bbde" class="">4. 货币转换</h3></div><div style="display:contents" dir="auto"><p id="309697ff-23be-809d-a059-ec7f89a38f7c" class="">放置怪物阶段：多余的xp按50:1回收成年兽币。</p></div><div style="display:contents" dir="auto"><p id="309697ff-23be-8000-af69-e0f082797312" class="">庙会阶段：按1:25兑换下一场战斗的额外起始xp。</p></div><div style="display:contents" dir="auto"><blockquote id="309697ff-23be-8097-9df8-c1ca2810039c" class="">注：该兑换只作用于同一轮的下一场战斗。商店“大吉大利”则作用于下一轮的所有战斗。</blockquote></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-815e-a54b-c35794aab12b"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-81cf-b977-eddd4831c175" class="">🏮 增益系统</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-812c-aa6c-dfa0aba5d2bc" class="">Buff抽取规则</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81aa-8e66-dd349acdf7a6" class="">每场战斗开始前进行Buff抽取，基础只能抽取一次：<br/>- <strong>第一轮</strong>：抽取<strong>地煞池</strong><br/>- <strong>第二轮</strong>：抽取<strong>地煞池+天罡池</strong>（各1次）</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81dc-9eb3-e6c0f57dbe6e" class="">Buff使用规则</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81cc-af33-c4c145f95e8b" class="bulleted-list"><li style="list-style-type:disc"><strong>地煞池Buff</strong>：可作用于<strong>某一类生物</strong>（如”我所有的兽人获得此Buff”）</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8134-b389-e31e2e70147e" class="bulleted-list"><li style="list-style-type:disc"><strong>天罡池Buff</strong>：只能作用于<strong>某一个生物</strong></li></ul></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-810a-ab3e-e5cb34f48ee6"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-8171-96c1-fdc92c61f24e" class="">🛍️ 庙会商店</h2></div><div style="display:contents" dir="auto"><p id="308697ff-23be-819e-aa4a-fdf886d8112a" class="">每场战斗结束后，用赚取的年兽币在庙会购物。庙会分为两个区域：</p></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-811c-a112-d6c0490fe18d" class="">【第一层：基础物资】</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8150-89e1-ffcc9d522cf7" class="">基础商品，效果普通。第一轮开放</p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-81e7-ac0b-d0121314ecb9" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81af-836c-f2428a1b8a85"><th id="XX]Q" class="simple-table-header-color simple-table-header">商品</th><th id="qzqm" class="simple-table-header-color simple-table-header">价格</th><th id="v&lt;Tz" class="simple-table-header-color simple-table-header">效果</th><th id="Epsz" class="simple-table-header-color simple-table-header">类型</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81f9-a931-e8f952343b11"><td id="XX]Q" class=""><strong>大吉大利</strong></td><td id="qzqm" class=""><strong>8币</strong>（限购一次）</td><td id="v&lt;Tz" class="">下一轮 XP预算 <strong>额外 +400</strong></td><td id="Epsz" class="">增益</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-819e-8156-c309e0be1436"><td id="XX]Q" class=""><strong>二踢脚</strong></td><td id="qzqm" class=""><strong>4 币</strong></td><td id="v&lt;Tz" class="">半径10尺范围，DC12敏捷豁免，失败则受到2d6火焰伤害</td><td id="Epsz" class="">锦囊</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-817e-82d0-c8ce3207ad82"><td id="XX]Q" class=""><strong>急救包</strong></td><td id="qzqm" class=""><strong>3 币</strong></td><td id="v&lt;Tz" class="">立刻治疗一只怪物 (2d8+4 HP)</td><td id="Epsz" class="">锦囊</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-816d-9391-c214f30354c3"><td id="XX]Q" class=""><strong>大力丸</strong></td><td id="qzqm" class=""><strong>4 币</strong></td><td id="v&lt;Tz" class="">指定一只怪物，所有造成的伤害+2，持续到该场战斗结束</td><td id="Epsz" class="">锦囊</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81f9-8ef2-dc77d0e7c44c" class="">【第二层：镇店之宝】</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81f8-ac8f-da50ee1aed91" class="">高级商品，效果强大。第二轮开放</p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-8107-b05f-d80725f9042e" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8175-b8f5-eee30d6a77dd"><th id="osp}" class="simple-table-header-color simple-table-header">商品</th><th id="=St|" class="simple-table-header-color simple-table-header">价格</th><th id="_;\d" class="simple-table-header-color simple-table-header">效果</th><th id="NNZN" class="simple-table-header-color simple-table-header">类型</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81ea-9d7a-ef8f978eb5d9"><td id="osp}" class=""><strong>窜天猴</strong></td><td id="=St|" class=""><strong>8 币</strong>（限购1次）</td><td id="_;\d" class="">20尺半径，DC14敏捷豁免，失败则受到6d6火焰伤害</td><td id="NNZN" class="">锦囊</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81db-b831-c2ebb272c56f"><td id="osp}" class=""><strong>定身符</strong></td><td id="=St|" class=""><strong>5 币</strong></td><td id="_;\d" class="">DC13感知豁免，失败则麻痹1回合</td><td id="NNZN" class="">锦囊</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81f0-8ae9-f1e348a0280f"><td id="osp}" class=""><strong>吸血獠牙</strong></td><td id="=St|" class=""><strong>10 币</strong></td><td id="_;\d" class="">绑定到一只怪物，造成伤害的一半转化为治疗</td><td id="NNZN" class="">装备</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-813a-b914-e3f7a9d5cd12"><td id="osp}" class=""><strong>荆棘背心</strong></td><td id="=St|" class=""><strong>8 币</strong></td><td id="_;\d" class="">绑定到一只怪物，每次被命中反弹1d4穿刺伤害</td><td id="NNZN" class="">装备</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81e6-890a-e6b8cb6a35b1"><td id="osp}" class=""><strong>狙击镜</strong></td><td id="=St|" class=""><strong>8 币</strong></td><td id="_;\d" class="">绑定到一只远程怪物，无视掩护，距离每多20尺命中+1</td><td id="NNZN" class="">装备</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-817c-8f44-daf1753897e1"><td id="osp}" class=""><strong>复活币</strong></td><td id="=St|" class=""><strong>12 币</strong>（限购一次）</td><td id="_;\d" class="">绑定的怪物战败后，以半血复活一次</td><td id="NNZN" class="">锦囊</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8129-8cb6-f37ba25f29f2"><td id="osp}" class=""><strong>五福同心</strong></td><td id="=St|" class=""><strong>15币</strong></td><td id="_;\d" class="">额外抽取一次Buff（地煞池或天罡池）</td><td id="NNZN" class="">增益</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8104-8cd9-fb4d21da2bdc" class="">商品使用规则</h3></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-81eb-9d97-e53d2658a529" class="bulleted-list"><li style="list-style-type:disc"><strong>锦囊</strong>：在指挥官回合使用，一次性消耗品。</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8109-89ec-c43a3502e020" class="bulleted-list"><li style="list-style-type:disc"><strong>装备</strong>：战前绑定到一只怪物，怪物死亡则丢失。战斗结束如果对应怪物活着，可以回收到自己的装备库。</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-8126-bf42-ce38041a802c" class="bulleted-list"><li style="list-style-type:disc"><strong>增益</strong>：特殊效果</li></ul></div><div style="display:contents" dir="auto"><ul id="308697ff-23be-80b9-8ad4-ce56478dd879" class="bulleted-list"><li style="list-style-type:disc">锦囊或装备可以给队友用</li></ul></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-81e8-8a38-dcbc9efb8b86"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-8166-bfac-dcf18162d4c2" class="">🐉 怪物池</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8195-97fc-d2df87e687a7" class="">第一轮：百鬼夜行（CR ≤ 1）</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81cc-bbd4-e5c558cbac29" class=""><strong>XP预算：300 XP</strong></p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-8170-b3b7-e9460d9c01cb" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-813c-897f-eeb4ceaad654"><th id="[v^I" class="simple-table-header-color simple-table-header">怪物名称</th><th id="s~Ga" class="simple-table-header-color simple-table-header">CR</th><th id="M|tW" class="simple-table-header-color simple-table-header">价格 (XP)</th><th id="QKV;" class="simple-table-header-color simple-table-header">战术定位 &amp; 核心机制速览</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81e2-adc8-e225e9c562c5"><td id="[v^I" class=""><strong>狗头人</strong></td><td id="s~Ga" class="">1/8</td><td id="M|tW" class=""><strong>25</strong></td><td id="QKV;" class="">群体战术（有盟友在旁获得优势），极其廉价的人海战专家</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-817e-a05d-d79cd0c92ce0"><td id="[v^I" class=""><strong>哥布林</strong></td><td id="s~Ga" class="">1/4</td><td id="M|tW" class=""><strong>50</strong></td><td id="QKV;" class="">附赠动作可撤离/隐藏，适合拉扯风筝的游击专家</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8130-99b0-e21a2c8e6b9d"><td id="[v^I" class=""><strong>狼</strong></td><td id="s~Ga" class="">1/4</td><td id="M|tW" class=""><strong>50</strong></td><td id="QKV;" class="">自带群体战术，咬中敌人附带力量豁免，失败即被<strong>击倒</strong></td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81fa-aa7e-f5e9f75ff4e6"><td id="[v^I" class=""><strong>兽人</strong></td><td id="s~Ga" class="">1/2</td><td id="M|tW" class=""><strong>100</strong></td><td id="QKV;" class="">附赠动作可向敌人突进，大斧爆发伤害极高的狂战士</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-8093-add1-c7e8561bd239"><td id="[v^I" class=""><strong>斥候</strong></td><td id="s~Ga" class="">1/2</td><td id="M|tW" class=""><strong>100</strong></td><td id="QKV;" class="">双重攻击，远近皆可，万金油</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81a7-8874-fd33e5d50a84"><td id="[v^I" class=""><strong>大地精</strong></td><td id="s~Ga" class="">1/2</td><td id="M|tW" class=""><strong>100</strong></td><td id="QKV;" class="">高AC，有盟友在身边时，命中附带巨额 2d6 额外伤害的团队核心</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-80f1-bdc6-eadd54d1b1d2"><td id="[v^I" class=""><strong>冰魔蝠</strong></td><td id="s~Ga" class="">1/2</td><td id="M|tW" class=""><strong>150</strong></td><td id="QKV;" class="">拥有吐息与自爆，可搅乱敌人阵型</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-806e-825e-fdc5bf4a0aca"><td id="[v^I" class=""><strong>侍僧</strong></td><td id="s~Ga" class="">1/2</td><td id="M|tW" class=""><strong>150</strong></td><td id="QKV;" class="">血量较低，但拥有治疗能力</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-814b-90ab-c7ed5c18a17d"><td id="[v^I" class=""><strong>棕熊</strong></td><td id="s~Ga" class="">1</td><td id="M|tW" class=""><strong>200</strong></td><td id="QKV;" class="">一回合撕咬+爪击两段攻击，碾压低级兵的野兽之王</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8145-8b63-db04dcf612be"><td id="[v^I" class=""><strong>恐狼</strong></td><td id="s~Ga" class="">1</td><td id="M|tW" class=""><strong>200</strong></td><td id="QKV;" class="">带群体战术和高成功率的击倒特效，升级版狼群领袖</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-8072-858a-d82917c8b68d"><td id="[v^I" class=""><strong>黄铜龙雏龙</strong></td><td id="s~Ga" class="">1</td><td id="M|tW" class=""><strong>300</strong></td><td id="QKV;" class="">自带吐息和高额爪击伤害，对单对群都比较优秀</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-81a0-9d17-f37dac59a962" class="">第二轮：诸神黄昏（CR 2-5）</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-8192-be0a-f136b1a80e5c" class=""><strong>XP预算：1800 XP+</strong></p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-81b7-99f7-ddcd6e088afb" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8120-ba24-c0ac16561873"><th id="nvxy" class="simple-table-header-color simple-table-header">怪物名称</th><th id="&lt;I|R" class="simple-table-header-color simple-table-header">CR</th><th id="yIDK" class="simple-table-header-color simple-table-header">价格 (XP)</th><th id="x;ZP" class="simple-table-header-color simple-table-header">战术定位 &amp; 核心机制速览</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8114-8684-cfde4597f631"><td id="nvxy" class=""><strong>食人魔</strong> </td><td id="&lt;I|R" class="">2</td><td id="yIDK" class=""><strong>450</strong></td><td id="x;ZP" class="">59血单发大棒高伤，简单粗暴的沙包肉盾</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81f5-9e81-ffc2eddd9e09"><td id="nvxy" class=""><strong>石像鬼</strong></td><td id="&lt;I|R" class="">2</td><td id="yIDK" class=""><strong>450</strong></td><td id="x;ZP" class="">免疫毒素，且对非魔法武器造成的伤害拥有<strong>全面抗性</strong>的空中单位</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8103-aab8-c741c97317a4"><td id="nvxy" class=""><strong>骑士</strong></td><td id="&lt;I|R" class="">3</td><td id="yIDK" class=""><strong>700</strong></td><td id="x;ZP" class="">超高AC，自带”领导力”光环（范围内盟友攻防骰+1d4）的团队领袖</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-80b2-95cb-f468424c498a"><td id="nvxy" class=""><strong>石化蜥蜴</strong></td><td id="&lt;I|R" class="">3</td><td id="yIDK" class=""><strong>700</strong></td><td id="x;ZP" class="">既有近战能力又具威慑力的控场型怪物</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-815e-b738-fb87c86698a7"><td id="nvxy" class=""><strong>枭熊</strong></td><td id="&lt;I|R" class="">3</td><td id="yIDK" class=""><strong>700</strong></td><td id="x;ZP" class="">强悍的近战多段攻击爆发与极高的生命值，纯粹的伤害输出</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81be-87a3-f62e225ec46b"><td id="nvxy" class=""><strong>蝎尾狮</strong> </td><td id="&lt;I|R" class="">3</td><td id="yIDK" class=""><strong>700</strong></td><td id="x;ZP" class="">飞行单位，无视近战地形，每回合射出 <strong>3发尾刺</strong> 压制全场的远程杀手</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8101-b534-d0ba4496d0e0"><td id="nvxy" class=""><strong>双头巨人</strong> </td><td id="&lt;I|R" class="">4</td><td id="yIDK" class=""><strong>1100</strong></td><td id="x;ZP" class="">双重攻击极强，且<strong>双脑</strong>让它面对控场法术具有豁免优势</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-8066-a846-e8112a47d2f2"><td id="nvxy" class=""><strong>红龙幼龙</strong></td><td id="&lt;I|R" class="">4</td><td id="yIDK" class=""><strong>1100</strong></td><td id="x;ZP" class="">飞行单位，拥有高爆发火焰喷吐的范围压制能力，机动性与AOE兼具的战场清场者</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-80e9-9bbc-cb73c4d5971b"><td id="nvxy" class=""><strong>至高妖精邪术师</strong></td><td id="&lt;I|R" class="">4</td><td id="yIDK" class=""><strong>1100</strong></td><td id="x;ZP" class="">擅长魅惑与干扰敌方行动，依靠控制与战术节奏掌控战局的法术核心</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81f7-b184-eeedf9370061"><td id="nvxy" class=""><strong>角斗士</strong> </td><td id="&lt;I|R" class="">5</td><td id="yIDK" class=""><strong>1800</strong></td><td id="x;ZP" class="">人形兵器。一回合三次攻击，附带招架提AC和盾击的武术大师</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-80c0-acc5-e233ab2a6dd7"><td id="nvxy" class=""><strong>巨魔</strong></td><td id="&lt;I|R" class="">5</td><td id="yIDK" class=""><strong>1800</strong></td><td id="x;ZP" class="">拥有强大再生能力，肉墙</td></tr></div><div style="display:contents" dir="ltr"><tr id="309697ff-23be-80bc-a14c-c8d9ed84ca82"><td id="nvxy" class=""><strong>惑控师</strong></td><td id="&lt;I|R" class="">5</td><td id="yIDK" class=""><strong>2000</strong></td><td id="x;ZP" class="">支配与定身关键目标，通过强力单体控制改变战局走向</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-815d-b621-f7dcfd8283e7"/></div><div style="display:contents" dir="auto"><h2 id="308697ff-23be-81d0-a666-d012cfe47ed7" class="">🏮 Buff池详细效果</h2></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-814a-931e-fc2e810bb6e0" class="">第一轮：地煞池 (d10)</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-81f7-ba08-cdd672145a97" class=""><strong>投掷d10，根据结果获得对应Buff（同类生物均可使用）</strong></p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-8183-96a9-cfa5955898b7" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-811f-a8fc-c751d692ce23"><th id="mgdk" class="simple-table-header-color simple-table-header">d10</th><th id="YeNO" class="simple-table-header-color simple-table-header">名称</th><th id="JeyH" class="simple-table-header-color simple-table-header">效果</th><th id="jzbA" class="simple-table-header-color simple-table-header">描述</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81a6-8d83-c3cda499a90a"><td id="mgdk" class="">1</td><td id="YeNO" class=""><strong>开门红</strong></td><td id="JeyH" class=""><strong>先攻+5</strong>，首回合移动翻倍</td><td id="jzbA" class="">新的一年开门见喜，抢占先机</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8120-88c9-eed6b2cb627e"><td id="mgdk" class="">2</td><td id="YeNO" class=""><strong>铁布衫</strong></td><td id="JeyH" class=""><strong>AC +2</strong></td><td id="jzbA" class="">如铁布衫般坚固，抵御攻击</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8181-887c-de93e3863f09"><td id="mgdk" class="">3</td><td id="YeNO" class=""><strong>雷公助威</strong></td><td id="JeyH" class="">命中后额外 <strong>1d4 雷鸣伤害</strong>（每回合限1次）</td><td id="jzbA" class="">雷公打鼓，助威助阵</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8107-9587-ec1e56cf2bca"><td id="mgdk" class="">4</td><td id="YeNO" class=""><strong>百步穿杨</strong></td><td id="JeyH" class="">远程攻击倒地生物时也能获取优势</td><td id="jzbA" class="">百步穿杨，箭无虚发</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-819d-b1c3-e046a89d7aff"><td id="mgdk" class="">5</td><td id="YeNO" class=""><strong>怒发冲冠</strong></td><td id="JeyH" class="">伤害骰+1d6，获得挥砍抗性</td><td id="jzbA" class="">怒发冲冠，气势如虹</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8112-a736-fc5f37f7d0d0"><td id="mgdk" class="">6</td><td id="YeNO" class=""><strong>凌波微步</strong></td><td id="JeyH" class="">移速 <strong>+10尺</strong>，受到借机攻击时对方劣势</td><td id="jzbA" class="">凌波微步，罗袜生尘</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-815d-8bb3-d30e1d5bd8bd"><td id="mgdk" class="">7</td><td id="YeNO" class=""><strong>众志成城</strong></td><td id="JeyH" class=""><strong>光环</strong>：5尺内每有盟友，AC+1 (最多+3)</td><td id="jzbA" class="">众志成城，团结力量大</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81d6-8687-c51a5498b3b6"><td id="mgdk" class="">8</td><td id="YeNO" class=""><strong>连环计</strong></td><td id="JeyH" class=""><strong>夹击优势</strong>：盟友在目标5尺内，攻击优势</td><td id="jzbA" class="">连环计谋，配合无间</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8168-a27d-e3f8f67e86b1"><td id="mgdk" class="">9</td><td id="YeNO" class=""><strong>斩妖除魔</strong></td><td id="JeyH" class="">对 &lt;50%血 目标，伤害 <strong>+1d6，无视抗性</strong></td><td id="jzbA" class="">斩妖除魔，为民除害</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8119-bbdf-c9ff0cff2282"><td id="mgdk" class="">10</td><td id="YeNO" class=""><strong>双喜临门</strong></td><td id="JeyH" class="">获得5 年兽币，再抽 1 次本表！</td><td id="jzbA" class="">双喜临门，好事成双</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h3 id="308697ff-23be-8135-b24b-ea9c7bb2d10d" class="">第二轮：天罡池 (d12)</h3></div><div style="display:contents" dir="auto"><p id="308697ff-23be-819b-ad78-eb34a179e36d" class=""><strong>投掷d12，根据结果获得对应Buff（只能某一个生物使用）</strong></p></div><div style="display:contents" dir="ltr"><table id="308697ff-23be-81a8-8dc7-d49f3c4c9dc4" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8130-a964-d14d7261bf46"><th id="UtFA" class="simple-table-header-color simple-table-header">d12</th><th id="C\eU" class="simple-table-header-color simple-table-header">名称</th><th id="VFGL" class="simple-table-header-color simple-table-header">效果 (原型)</th><th id="DvZc" class="simple-table-header-color simple-table-header">春节寓意</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8148-a5ec-d36a9c528bee"><td id="UtFA" class="">1</td><td id="C\eU" class=""><strong>至圣斩</strong></td><td id="VFGL" class="">（每回合限一次）近战命中额外 2<strong>d8 光耀</strong>伤害</td><td id="DvZc" class="">圣光降临，净化邪恶</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81aa-9d1a-e9361af2dfa4"><td id="UtFA" class="">2</td><td id="C\eU" class=""><strong>无情打击</strong></td><td id="VFGL" class="">攻击掷骰出 <strong>19 或 20</strong> 即视为暴击；暴击时额外投掷一个伤害骰</td><td id="DvZc" class="">无情打击，招招致命</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-811b-b498-dac99e112aea"><td id="UtFA" class="">3</td><td id="C\eU" class=""><strong>哨兵</strong></td><td id="VFGL" class="">借机命中定身，无视撤离</td><td id="DvZc" class="">忠诚哨兵，坚守岗位</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-817f-a8bd-f45f0094714b"><td id="UtFA" class="">4</td><td id="C\eU" class=""><strong>巨兽化</strong></td><td id="VFGL" class="">生命上限增加25%，近战攻击附带1d4伤害</td><td id="DvZc" class="">巨兽化形，力大无穷</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-814b-89b4-d1a657ea2d3f"><td id="UtFA" class="">5</td><td id="C\eU" class=""><strong>灵光乍现</strong></td><td id="VFGL" class="">自身及10尺盟友 <strong>豁免+2</strong></td><td id="DvZc" class="">灵光乍现，智慧闪光</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-810e-86e9-cbdbc5c642fd"><td id="UtFA" class="">6</td><td id="C\eU" class=""><strong>直觉闪避</strong></td><td id="VFGL" class="">反应：受击伤害 <strong>减半</strong></td><td id="DvZc" class="">直觉敏锐，闪避如风</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81be-922b-e882981803ab"><td id="UtFA" class="">7</td><td id="C\eU" class=""><strong>动作如潮</strong></td><td id="VFGL" class=""><strong>首回合</strong>额外一动作</td><td id="DvZc" class="">动作如潮，攻势连绵</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-81ca-9914-d1c3baaae678"><td id="UtFA" class="">8</td><td id="C\eU" class=""><strong>吸血鬼</strong></td><td id="VFGL" class="">击杀回复 <strong>2d8 HP</strong></td><td id="DvZc" class="">吸血獠牙，愈战愈勇</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-818a-9dfe-e03ac5bb9440"><td id="UtFA" class="">9</td><td id="C\eU" class=""><strong>不屈（限1次）</strong></td><td id="VFGL" class="">免疫倒地/麻痹/震慑。死亡时以1血复活，传送至15尺内任意地方</td><td id="DvZc" class="">不屈意志，死而复生</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-8157-9be0-c48f2bba4f3d"><td id="UtFA" class="">10</td><td id="C\eU" class=""><strong>龙威</strong></td><td id="VFGL" class="">消耗动作，10尺范围内敌人DC13 感知，否则<strong>恐慌</strong></td><td id="DvZc" class="">龙威震慑，万兽臣服</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-815a-8355-d5c50b5cc0ef"><td id="UtFA" class="">11</td><td id="C\eU" class=""><strong>法术抗性</strong></td><td id="VFGL" class="">感知与体质豁免优势，受到的法术伤害减半</td><td id="DvZc" class="">法术抗性，魔免之躯</td></tr></div><div style="display:contents" dir="ltr"><tr id="308697ff-23be-817e-9188-d08f413975dc"><td id="UtFA" class="">12</td><td id="C\eU" class=""><strong>财神到</strong></td><td id="VFGL" class="">获 <strong>10 币</strong>，重抽本表</td><td id="DvZc" class="">财神降临，财运亨通</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><hr id="308697ff-23be-8118-a053-ea936aab324b"/></div></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>

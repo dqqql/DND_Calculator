@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新春怪物角斗场助手</title>
+    
+    <script src="./lib/react.development.js"></script>
+    <script src="./lib/react-dom.development.js"></script>
+    <script src="./lib/babel.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #eab308;
+            --primary-dark: #a16207;
+            --accent-red: #b91c1c;
+            --accent-red-hover: #991b1b;
+            --accent-green: #10b981;
+            --border: #334155;
+        }
+
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding-bottom: 80px; }
+        * { box-sizing: border-box; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .gap-4 { gap: 16px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+        
+        .header { background-color: #7f1d1d; color: #fef08a; padding: 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border-bottom: 4px solid #ca8a04; }
+        
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: all 0.2s; position: relative; overflow: hidden; }
+        .card:hover { border-color: var(--primary); }
+        
+        .btn { cursor: pointer; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; transition: all 0.1s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-primary { background-color: var(--primary); color: #422006; }
+        .btn-danger { background-color: rgba(185, 28, 28, 0.2); color: #f87171; }
+        .btn-success { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .btn-tab { background-color: var(--bg-card); color: var(--text-muted); padding: 12px 24px; border: 1px solid var(--border); }
+        .btn-tab.active { background-color: var(--primary); color: #422006; border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3); }
+
+        .progress-container { background-color: #334155; height: 16px; border-radius: 999px; overflow: hidden; margin-top: 8px; border: 1px solid #475569; }
+        .progress-bar { height: 100%; transition: width 0.5s ease; }
+        .bg-green { background: linear-gradient(90deg, #10b981, #34d399); }
+        .bg-red { background: #ef4444; }
+
+        .slide-in { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div style="text-align:center; padding-top:100px; color:#94a3b8;">
+            正在初始化战场...<br>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 本地化图标组件 (原生 Emoji 版) ---
+        const Icons = {
+            Sword: () => <span>⚔️</span>,
+            Shield: () => <span>🛡️</span>,
+            Cart: () => <span>🛒</span>,
+            Dice: () => <span>🎲</span>,
+            Coins: () => <span>🪙</span>,
+            Trash: () => <span>🗑️</span>,
+            Plus: () => <span>➕</span>,
+            Minus: () => <span>➖</span>,
+            Refresh: () => <span>🔄</span>
+        };
+
+        const ROUND_1_BUDGET = 300;
+        const ROUND_2_BASE_BUDGET = 1800;
+
+        const MONSTERS_R1 = [
+            { id: 'kobold', name: '狗头人', cr: '1/8', price: 25, desc: '群体战术，人海战专家' },
+            { id: 'goblin', name: '哥布林', cr: '1/4', price: 50, desc: '附赠撤离/隐藏，游击专家' },
+            { id: 'wolf', name: '狼', cr: '1/4', price: 50, desc: '群体战术，击倒特效' },
+            { id: 'zombie', name: '丧尸', cr: '1/4', price: 50, desc: '缓慢不死生物，难以被快速击杀' },
+            { id: 'orc', name: '兽人', cr: '1/2', price: 100, desc: '附赠突进，爆发伤害高' },
+            { id: 'ice_mephit', name: '冰魔蝠', cr: '1/2', price: 150, desc: '飞行，寒冷吐息，死亡时爆炸' },
+            { id: 'scout', name: '斥候', cr: '1/2', price: 100, desc: '高移动力，侦察优势，远程攻击' },
+            { id: 'devil_dog', name: '侍僧', cr: '1/2', price: 150, desc: '治疗能力' },
+            { id: 'hobgoblin', name: '大地精', cr: '1/2', price: 100, desc: '高AC，盟友在此额外伤害' },
+            { id: 'brown_bear', name: '棕熊', cr: '1', price: 200, desc: '多重攻击，血量厚' },
+            { id: 'dire_wolf', name: '恐狼', cr: '1', price: 200, desc: '升级版狼群领袖' },
+            { id: 'brass_dragon_wyrmling', name: '黄铜龙雏龙', cr: '1', price: 300, desc: '自带吐息和高额爪击伤害，对单对群都比较优秀' },
+        ];
+        const MONSTERS_R2 = [
+            { id: 'ogre', name: '食人魔', cr: '2', price: 450, desc: '高伤肉盾' },
+            { id: 'gargoyle', name: '石像鬼', cr: '2', price: 450, desc: '非魔法抗性，飞行' },
+            { id: 'knight', name: '骑士', cr: '3', price: 700, desc: '高AC，领导力光环' },
+            { id: 'basilisk', name: '石化蜥蜴', cr: '3', price: 700, desc: '既有近战能力又具威慑力的控场型怪物' },
+            { id: 'owlbear', name: '枭熊', cr: '3', price: 700, desc: '强悍的近战多段攻击爆发与极高的生命值，纯粹的伤害输出' },
+            { id: 'manticore', name: '蝎尾狮', cr: '3', price: 700, desc: '飞行单位，无视近战地形，每回合射出 3发尾刺 压制全场的远程杀手' },
+            { id: 'ettin', name: '双头巨人', cr: '4', price: 1100, desc: '双重攻击极强，且双脑让它面对控场法术具有豁免优势' },
+            { id: 'red_dragon_wyrmling', name: '红龙幼龙', cr: '4', price: 1100, desc: '飞行单位，拥有高爆发火焰喷吐的范围压制能力，机动性与AOE兼具的战场清场者' },
+            { id: 'high_fae_warlock', name: '至高妖精邪术师', cr: '4', price: 1100, desc: '擅长魅惑与干扰敌方行动，依靠控制与战术节奏掌控战局的法术核心' },
+            { id: 'earth_ele', name: '土元素', cr: '5', price: 1800, desc: '极高防御，穿墙突袭' },
+            { id: 'gladiator', name: '角斗士', cr: '5', price: 1800, desc: '人形兵器。一回合三次攻击，附带招架提AC和盾击的武术大师' },
+            { id: 'troll', name: '巨魔', cr: '5', price: 1800, desc: '拥有强大再生能力，肉墙' },
+            { id: 'enchanter', name: '惑控师', cr: '5', price: 2000, desc: '支配与定身关键目标，通过强力单体控制改变战局走向' },
+        ];
+        const SHOP_ITEMS_R1 = [
+            { id: 'lucky', name: '大吉大利', price: 8, type: 'buff', effect: '下一轮XP预算+400', oneTime: true },
+            { id: 'firecracker', name: '二踢脚', price: 4, type: 'item', effect: 'DC12 敏捷豁免，半径10尺范围 2d6 火焰伤害' },
+            { id: 'medkit', name: '急救包', price: 3, type: 'item', effect: '治疗单体 2d6+2 HP' },
+            { id: 'steroid', name: '大力丸', price: 4, type: 'item', effect: '单体伤害+2直到战斗结束' },
+        ];
+        const SHOP_ITEMS_R2 = [
+            { id: 'rocket', name: '窜天猴', price: 8, type: 'item', effect: '20尺半径 6d6 火焰伤害', oneTime: true },
+            { id: 'hold', name: '定身符', price: 5, type: 'item', effect: '麻痹1回合' },
+            { id: 'vampire', name: '吸血獠牙', price: 10, type: 'equip', effect: '伤害一半转治疗' },
+            { id: 'thorns', name: '荆棘背心', price: 8, type: 'equip', effect: '受击反弹1d4伤害' },
+            { id: 'scope', name: '狙击镜', price: 8, type: 'equip', effect: '无视掩护，远程命中加成' },
+            { id: 'revive', name: '复活币', price: 12, type: 'item', effect: '半血复活一次', oneTime: true },
+            { id: 'bless', name: '五福同心', price: 15, type: 'buff', effect: '额外抽取一次Buff', oneTime: false },
+        ];
+        const BUFFS_EARTH = [
+            { roll: 1, name: '开门红', effect: '先攻+5，首回合移动翻倍' },
+            { roll: 2, name: '铁布衫', effect: 'AC +2' },
+            { roll: 3, name: '雷公助威', effect: '命中后额外 1d4 雷鸣伤害（每回合限1次）' },
+            { roll: 4, name: '百步穿杨', effect: '远程攻击倒地生物时也能获取优势' },
+            { roll: 5, name: '怒发冲冠', effect: '伤害骰+1d6，获得挥砍抗性' },
+            { roll: 6, name: '凌波微步', effect: '移速+10尺，受到借机攻击时对方劣势' },
+            { roll: 7, name: '众志成城', effect: '光环：5尺内每有盟友，AC+1 (最多+3)' },
+            { roll: 8, name: '连环计', effect: '夹击优势：盟友在目标5尺内，攻击优势' },
+            { roll: 9, name: '斩妖除魔', effect: '对 <50%血 目标，伤害+1d6，无视抗性' },
+            { roll: 10, name: '双喜临门', effect: '获得5年兽币，再抽1次本表！' },
+        ];
+        const BUFFS_HEAVEN = [
+            { roll: 1, name: '至圣斩', effect: '近战命中额外 2d8 光耀伤害' },
+            { roll: 2, name: '无情打击', effect: '19-20暴击，暴击额外一骰' },
+            { roll: 3, name: '哨兵', effect: '借机命中定身，无视撤离' },
+            { roll: 4, name: '巨兽化', effect: '生命+25%，近战附带1d4伤害' },
+            { roll: 5, name: '灵光乍现', effect: '自身及10尺盟友 豁免+2' },
+            { roll: 6, name: '直觉闪避', effect: '反应：受击伤害减半' },
+            { roll: 7, name: '动作如潮', effect: '首回合额外一动作' },
+            { roll: 8, name: '吸血鬼', effect: '击杀回复 2d8 HP' },
+            { roll: 9, name: '不屈', effect: '免疫倒地/麻痹/震慑，死后1血复活瞬移' },
+            { roll: 10, name: '龙威', effect: '10尺范围恐慌判定 (DC13)' },
+            { roll: 11, name: '法术抗性', effect: '抗魔优势，法术伤害减半' },
+            { roll: 12, name: '财神到', effect: '获 10 币，重抽本表' },
+        ];
+
+        function App() {
+            const [round, setRound] = useState(1);
+            const [coins, setCoins] = useState(0);
+            const [army, setArmy] = useState({});
+            const [inventory, setInventory] = useState([]);
+            const [xpBonus, setXpBonus] = useState(0);
+            const [activeTab, setActiveTab] = useState('army');
+            const [buffHistory, setBuffHistory] = useState([]);
+            const [drawnCards, setDrawnCards] = useState([]);
+            const [exchangeXp, setExchangeXp] = useState(0); // 额外起始XP（币→XP）
+            const [exchangeCap, setExchangeCap] = useState(10); // 兑换上限（币）
+            const [coinsToExchange, setCoinsToExchange] = useState(1);
+            const [recycledXP, setRecycledXP] = useState(0); // 已回收的XP（防重复）
+
+            useEffect(() => {
+                const savedData = localStorage.getItem('dnd-arena-data');
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        setRound(parsed.round || 1);
+                        setCoins(parsed.coins || 0);
+                        setArmy(parsed.army || {});
+                        setInventory(parsed.inventory || []);
+                        setXpBonus(parsed.xpBonus || 0);
+                        setBuffHistory(parsed.buffHistory || []);
+                        setDrawnCards(parsed.drawnCards || []);
+                        setExchangeXp(parsed.exchangeXp || 0);
+                        setExchangeCap(parsed.exchangeCap || 10);
+                        setCoinsToExchange(parsed.coinsToExchange || 1);
+                        setRecycledXP(parsed.recycledXP || 0);
+                    } catch (e) { console.error("Load failed", e); }
+                }
+            }, []);
+
+            useEffect(() => {
+                const data = { round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP };
+                localStorage.setItem('dnd-arena-data', JSON.stringify(data));
+            }, [round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP]);
+
+            const getMonsterList = () => round === 1 ? MONSTERS_R1 : [...MONSTERS_R1, ...MONSTERS_R2];
+            const getCostForNext = (monsterId, currentCount) => {
+                const monster = getMonsterList().find(m => m.id === monsterId);
+                if (!monster) return 0;
+                return monster.price * (currentCount + 1);
+            };
+            const calculateTotalXP = () => {
+                let total = 0;
+                Object.entries(army).forEach(([id, count]) => {
+                    const monster = getMonsterList().find(m => m.id === id);
+                    if (monster) {
+                        for (let i = 0; i < count; i++) total += monster.price * (i + 1);
+                    }
+                });
+                return total;
+            };
+            const currentXP = calculateTotalXP();
+            const maxXP = round === 1 ? ROUND_1_BUDGET + exchangeXp : ROUND_2_BASE_BUDGET + xpBonus + exchangeXp;
+
+            const addMonster = (id) => {
+                const currentCount = army[id] || 0;
+                const cost = getCostForNext(id, currentCount);
+                if (currentXP + cost > maxXP) { alert("预算不足！"); return; }
+                setArmy({ ...army, [id]: currentCount + 1 });
+            };
+            const removeMonster = (id) => {
+                const currentCount = army[id] || 0;
+                if (currentCount <= 0) return;
+                const newArmy = { ...army, [id]: currentCount - 1 };
+                if (newArmy[id] === 0) delete newArmy[id];
+                setArmy(newArmy);
+            };
+            const buyItem = (item) => {
+                if (coins < item.price) { alert("年兽币不足！"); return; }
+                setCoins(coins - item.price);
+                setInventory([...inventory, item.name]);
+                if (item.id === 'lucky') setXpBonus(xpBonus + 400);
+            };
+
+            // --- 抽怪物卡 / 卖卡 / 兑换 / 回收 ---
+            const drawMonsters = (n = 3) => {
+                const pool = getMonsterList();
+                const poolCopy = [...pool];
+                const picks = [];
+                for (let i = 0; i < n && poolCopy.length; i++) {
+                    const idx = Math.floor(Math.random() * poolCopy.length);
+                    picks.push(poolCopy.splice(idx, 1)[0]);
+                }
+                setDrawnCards(picks);
+            };
+            const sellDrawnCard = (index) => {
+                const card = drawnCards[index];
+                if (!card) return;
+                setCoins(coins + 2);
+                const newDrawn = [...drawnCards];
+                newDrawn.splice(index, 1);
+                setDrawnCards(newDrawn);
+            };
+            const keepDrawnAsPurchase = (monster) => {
+                addMonster(monster.id);
+                setDrawnCards(drawnCards.filter(d => d.id !== monster.id));
+            };
+            const convertCoinsToXP = (amount) => {
+                const amt = Number(amount);
+                if (!amt || amt <= 0) return;
+                if (amt > exchangeCap) { alert('超过兑换上限'); return; }
+                if (amt > coins) { alert('年兽币不足'); return; }
+                setCoins(coins - amt);
+                setExchangeXp(exchangeXp + amt * 25);
+            };
+            const clearExchangeXp = () => setExchangeXp(0);
+            const recycleUnusedXP = () => {
+                const remaining = Math.max(0, maxXP - currentXP - recycledXP);
+                const coinsGained = Math.floor(remaining / 50);
+                if (coinsGained <= 0) { alert('当前没有可回收的 XP'); return; }
+                setCoins(coins + coinsGained);
+                setRecycledXP(recycledXP + coinsGained * 50);
+                alert(`回收成功：获得 ${coinsGained} 币`);
+            };
+
+            const rollBuff = (type) => {
+                const pool = type === 'earth' ? BUFFS_EARTH : BUFFS_HEAVEN;
+                const dice = type === 'earth' ? 10 : 12;
+                const resultVal = Math.floor(Math.random() * dice) + 1;
+                const buff = pool.find(b => b.roll === resultVal);
+                const newBuffEntry = {
+                    round: round,
+                    type: type === 'earth' ? '地煞 (d10)' : '天罡 (d12)',
+                    val: resultVal,
+                    name: buff.name,
+                    desc: buff.effect,
+                    time: new Date().toLocaleTimeString()
+                };
+                setBuffHistory([newBuffEntry, ...buffHistory]);
+                if (type === 'earth' && resultVal === 10) { setCoins(coins + 5); alert("🎉 双喜临门！获得5年兽币，请再抽一次！"); }
+                if (type === 'heaven' && resultVal === 12) { setCoins(coins + 10); alert("🎉 财神到！获得10年兽币，请再抽一次！"); }
+            };
+            const resetAll = () => {
+                if(confirm("确定要重置所有数据吗？")) {
+                    setRound(1); setCoins(0); setArmy({}); setInventory([]); setXpBonus(0); setBuffHistory([]);
+                }
+            };
+
+            return (
+                <div className="app-container">
+                    {/* Header */}
+                    <header className="header flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <h1 style={{margin:0, fontSize:'1.2rem'}}>🐉 新春怪物角斗场</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className={`btn ${round === 1 ? 'btn-primary' : 'btn-tab active'}`} style={{padding: '4px 12px', fontSize: '0.9rem'}}>
+                                第 {round} 轮
+                            </div>
+                            <div className="flex items-center gap-2" style={{color: '#fcd34d', fontWeight: 'bold'}}>
+                                <Icons.Coins /> {coins}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="container slide-in">
+                        {/* XP Budget Bar */}
+                        <div className="card" style={{marginBottom: '20px'}}>
+                            <div className="flex justify-between items-center mb-1">
+                                <span style={{color: '#94a3b8', fontSize: '0.9rem'}}>XP 预算状态</span>
+                                <span style={{fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 'bold', color: currentXP > maxXP ? '#ef4444' : '#34d399'}}>
+                                    {currentXP} / {maxXP}
+                                </span>
+                            </div>
+                            <div className="progress-container">
+                                <div className={`progress-bar ${currentXP > maxXP ? 'bg-red' : 'bg-green'}`} style={{width: `${Math.min((currentXP/maxXP)*100, 100)}%`}}></div>
+                            </div>
+                            {currentXP > maxXP && <div style={{color:'#f87171', marginTop:'8px', fontSize:'0.9rem', fontWeight:'bold'}}>⚠️ 预算超支！请移除部分怪物。</div>}
+                        </div>
+
+                        {/* Navigation */}
+                        <div className="flex gap-2" style={{overflowX: 'auto', paddingBottom: '4px', marginBottom: '20px'}}>
+                            <button onClick={() => setActiveTab('army')} className={`btn btn-tab ${activeTab === 'army' ? 'active' : ''}`}>
+                                <Icons.Sword /> 构筑军团
+                            </button>
+                            <button onClick={() => setActiveTab('market')} className={`btn btn-tab ${activeTab === 'market' ? 'active' : ''}`}>
+                                <Icons.Cart /> 庙会 & 钱包
+                            </button>
+                            <button onClick={() => setActiveTab('buff')} className={`btn btn-tab ${activeTab === 'buff' ? 'active' : ''}`}>
+                                <Icons.Dice /> Buff 祈福
+                            </button>
+                        </div>
+
+                        {/* --- ARMY TAB --- */}
+                        {activeTab === 'army' && (
+                            <div className="slide-in">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 style={{margin:0, fontSize: '1.25rem', color: '#fef08a'}}>怪物卡池</h2>
+                                    {round === 1 && (
+                                        <button onClick={() => { setRound(2); setCoins(coins + 5); }} className="btn" style={{border: '1px solid #a855f7', color: '#d8b4fe'}}>
+                                            晋级到第二轮 &gt;
+                                        </button>
+                                    )}
+                                    {round === 2 && (
+                                        <button onClick={() => setRound(1)} className="btn" style={{border: '1px solid #475569', color: '#cbd5e1'}}>
+                                            &lt; 返回第一轮
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* 抽怪物卡 区域 */}
+                                <div className="card" style={{marginBottom:'12px'}}>
+                                    <div className="flex items-center justify-between" style={{marginBottom:'8px'}}>
+                                        <div>
+                                            <strong>抽怪物卡</strong>
+                                            <div style={{fontSize:'0.85rem', color:'#94a3b8'}}>抽取 3 张怪物卡：可卖卡(+2 币) 或 直接购买</div>
+                                        </div>
+                                        <div style={{display:'flex', gap:'8px'}}>
+                                            <button className="btn btn-primary" onClick={() => drawMonsters()}>抽取 3 张</button>
+                                            <button className="btn" onClick={() => setDrawnCards([])}>清空</button>
+                                            <button className="btn" onClick={recycleUnusedXP} style={{backgroundColor:'#1f2937', color:'#fbbf24'}}>回收未用 XP</button>
+                                        </div>
+                                    </div>
+
+                                    {drawnCards.length === 0 ? (
+                                        <div style={{color:'#94a3b8'}}>尚未抽取怪物卡</div>
+                                    ) : (
+                                        <div className="grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))'}}>
+                                            {drawnCards.map((card, idx) => (
+                                                <div key={idx} className="card" style={{padding:'8px'}}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <div style={{fontWeight:'bold'}}>{card.name} <span style={{fontSize:'0.8rem', color:'#94a3b8'}}>CR {card.cr}</span></div>
+                                                        <div style={{color:'#facc15', fontWeight:'bold'}}>{card.price} XP</div>
+                                                    </div>
+                                                    <div style={{fontSize:'0.85rem', color:'#94a3b8', minHeight:'40px'}}>{card.desc}</div>
+                                                    <div className="flex gap-2" style={{marginTop:'8px'}}>
+                                                        <button className="btn btn-success" onClick={() => keepDrawnAsPurchase(card)}>购入 1</button>
+                                                        <button className="btn" onClick={() => sellDrawnCard(idx)} style={{backgroundColor:'#131418', color:'#fbbf24'}}>卖卡 +2</button>
+                                                        <button className="btn btn-danger" onClick={() => sellDrawnCard(idx)}><Icons.Trash /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid">
+                                    {getMonsterList().map(monster => {
+                                        const count = army[monster.id] || 0;
+                                        const nextCost = monster.price * (count + 1);
+                                        return (
+                                            <div key={monster.id} className="card flex flex-col justify-between" style={{borderColor: count > 0 ? 'var(--primary)' : ''}}>
+                                                <div>
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h3 style={{margin:0, fontSize: '1.1rem'}}>{monster.name}</h3>
+                                                        <span style={{backgroundColor:'#0f172a', padding:'2px 8px', borderRadius:'4px', fontSize:'0.8rem', color:'#94a3b8'}}>CR {monster.cr}</span>
+                                                    </div>
+                                                    <p style={{fontSize: '0.85rem', color: '#94a3b8', margin: '0 0 12px 0', minHeight: '32px'}}>{monster.desc}</p>
+                                                    <div style={{fontSize: '0.8rem', color: '#64748b'}}>
+                                                        单价: {monster.price} | 下只: <span style={{color: '#facc15', fontWeight: 'bold'}}>{nextCost}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between" style={{marginTop: '12px', backgroundColor: '#0f172a', padding: '8px', borderRadius: '8px'}}>
+                                                    <button className="btn btn-danger" onClick={() => removeMonster(monster.id)} disabled={count === 0} style={{padding: '6px'}}><Icons.Minus /></button>
+                                                    <span style={{fontSize: '1.2rem', fontWeight: 'bold', color: count > 0 ? '#facc15' : '#475569'}}>{count}</span>
+                                                    <button className="btn btn-success" onClick={() => addMonster(monster.id)} style={{padding: '6px'}}><Icons.Plus /></button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- MARKET TAB --- */}
+                        {activeTab === 'market' && (
+                            <div className="slide-in flex flex-col gap-4">
+                                <div className="card">
+                                    <h3 className="flex items-center gap-2" style={{margin:'0 0 16px 0', color:'#fef08a'}}><Icons.Coins /> 收入计算器</h3>
+                                    <div className="grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))'}}>
+                                        {[
+                                            { label: '炮灰', val: 1 },
+                                            { label: '精英击杀', val: 2 },
+                                            { label: '首领', val: 5 },
+                                            { label: '传奇击杀', val: 8 }
+                                        ].map(opt => (
+                                            <button key={opt.label} onClick={() => setCoins(coins + opt.val)} className="btn" style={{backgroundColor: '#334155', flexDirection: 'column', gap: '4px', padding: '12px'}}>
+                                                <span style={{fontSize: '0.8rem', color: '#94a3b8'}}>{opt.label}</span>
+                                                <span style={{color: '#4ade80', fontSize: '1.1rem'}}>+{opt.val}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between" style={{marginTop: '12px'}}>
+                                        <button onClick={() => setCoins(Math.max(0, coins - 1))} className="btn btn-danger" style={{fontSize: '0.8rem'}}>修正 -1</button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setCoins(coins + 3)} className="btn" style={{fontSize: '0.8rem', backgroundColor: '#1e3a8a', color: '#60a5fa'}}>生存奖励 +3</button>
+                                            <button onClick={() => setCoins(coins + 4)} className="btn" style={{fontSize: '0.8rem', backgroundColor: '#b91c1c', color: '#fecaca'}}>低保 +4</button>
+                                            <button onClick={() => setCoins(coins + 5)} className="btn" style={{fontSize: '0.8rem', backgroundColor: '#064e3b', color: '#6ee7b7'}}>基础年兽币 +5</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card">
+                                    <h3 className="flex items-center gap-2" style={{margin:'0 0 16px 0', color:'#fef08a'}}><Icons.Cart /> 庙会商店</h3>
+                                    <div className="grid">
+                                        {SHOP_ITEMS_R1.map(item => <ShopItem key={item.id} item={item} buyItem={buyItem} coins={coins} />)}
+                                    </div>
+                                    {round === 2 && (
+                                        <>
+                                            <h4 style={{margin: '16px 0 8px 0', color: '#c084fc', borderTop: '1px solid #334155', paddingTop: '16px'}}>✨ 镇店之宝 (第二轮)</h4>
+                                            <div className="grid">
+                                                {SHOP_ITEMS_R2.map(item => <ShopItem key={item.id} item={item} buyItem={buyItem} coins={coins} />)}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* 货币兑换（年兽币 ⇄ 起始 XP） */}
+                                <div className="card" style={{marginTop:'12px'}}>
+                                    <h4 style={{margin:'0 0 8px 0'}}>💱 货币兑换</h4>
+                                    <div style={{fontSize:'0.85rem', color:'#94a3b8', marginBottom:'8px'}}>放置阶段可将多余 XP 回收（50 XP → 1 币）；庙会阶段可将年兽币兑换为下一场额外起始 XP（1 币 → 25 XP）。</div>
+                                    <div className="flex gap-2" style={{marginBottom:'8px', alignItems:'center'}}>
+                                        <button className="btn" onClick={recycleUnusedXP} style={{backgroundColor:'#111827', color:'#fde68a'}}>回收未用 XP → 年兽币</button>
+                                        <div style={{color:'#94a3b8'}}>已回收：{Math.floor(recycledXP/50)} 币</div>
+                                    </div>
+
+                                    <div style={{borderTop:'1px solid #334155', paddingTop:'8px', marginTop:'8px'}}>
+                                        <div style={{display:'flex', gap:'8px', alignItems:'center', marginBottom:'8px'}}>
+                                            <input type="number" value={coinsToExchange} min="1" onChange={(e) => setCoinsToExchange(Number(e.target.value)||0)} style={{width:'80px', padding:'6px', borderRadius:'6px', border:'1px solid #334155', background:'#0f172a', color:'white'}} />
+                                            <button className="btn btn-primary" onClick={() => convertCoinsToXP(coinsToExchange)}>兑换为 XP (1 币 → 25 XP)</button>
+                                            <button className="btn" onClick={clearExchangeXp} style={{backgroundColor:'#111827', color:'#94a3b8'}}>清除额外 XP</button>
+                                        </div>
+                                        <div style={{fontSize:'0.85rem', color:'#94a3b8'}}>
+                                            已兑换额外 XP：<span style={{color:'#facc15', fontWeight:'bold'}}>{exchangeXp}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {inventory.length > 0 && (
+                                    <div className="card" style={{borderColor: '#ca8a04', borderStyle: 'dashed'}}>
+                                        <h4 style={{margin:'0 0 8px 0', fontSize:'0.9rem', color:'#94a3b8'}}>已购物品</h4>
+                                        <div className="flex" style={{flexWrap: 'wrap', gap: '8px'}}>
+                                            {inventory.map((item, idx) => (
+                                                <span key={idx} style={{backgroundColor:'#0f172a', padding:'4px 8px', borderRadius:'4px', fontSize:'0.85rem', display:'flex', alignItems:'center', gap:'4px', border: '1px solid #334155'}}>
+                                                    {item} <span style={{cursor:'pointer', color:'#f87171'}} onClick={() => {
+                                                        const newInv = [...inventory]; newInv.splice(idx, 1); setInventory(newInv);
+                                                    }}>×</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* --- BUFF TAB --- */}
+                        {activeTab === 'buff' && (
+                            <div className="slide-in flex flex-col gap-4">
+                                <div className="grid">
+                                    <div className="card flex flex-col items-center text-center" style={{background: 'linear-gradient(to bottom right, #1e293b, #0f172a)'}}>
+                                        <div style={{fontSize:'3rem', marginBottom:'8px'}}>🌍</div>
+                                        <h3 style={{margin:0, color:'#fef08a'}}>地煞池 (d10)</h3>
+                                        <p style={{fontSize:'0.8rem', color:'#94a3b8', margin:'4px 0 16px 0'}}>群体增益，全队生效</p>
+                                        <button onClick={() => rollBuff('earth')} className="btn btn-primary" style={{width:'100%', padding:'12px'}}>抽取地煞签</button>
+                                    </div>
+                                    <div className="card flex flex-col items-center text-center" style={{background: 'linear-gradient(to bottom right, #312e81, #1e1b4b)', opacity: round === 1 ? 0.5 : 1, position:'relative'}}>
+                                        {round === 1 && <div style={{position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', fontWeight:'bold'}}>第二轮解锁</div>}
+                                        <div style={{fontSize:'3rem', marginBottom:'8px'}}>⚡</div>
+                                        <h3 style={{margin:0, color:'#e0e7ff'}}>天罡池 (d12)</h3>
+                                        <p style={{fontSize:'0.8rem', color:'#a5b4fc', margin:'4px 0 16px 0'}}>单体强化，英雄时刻</p>
+                                        <button onClick={() => rollBuff('heaven')} disabled={round === 1} className="btn" style={{width:'100%', padding:'12px', backgroundColor:'#4f46e5', color:'white'}}>抽取天罡签</button>
+                                    </div>
+                                </div>
+                                {buffHistory.length > 0 && (
+                                    <div className="flex flex-col gap-2">
+                                        <h3 className="flex items-center gap-2" style={{margin:'8px 0', fontSize:'1rem'}}><Icons.Dice /> 祈福记录</h3>
+                                        {buffHistory.map((entry, idx) => (
+                                            <div key={idx} className="card slide-in flex justify-between items-center" style={{padding:'12px', borderLeft:'4px solid #ca8a04'}}>
+                                                <div>
+                                                    <div style={{fontSize:'0.8rem', color:'#64748b'}}>[{entry.type} - {entry.val}]</div>
+                                                    <div style={{fontWeight:'bold', color:'#fef08a'}}>{entry.name}</div>
+                                                    <div style={{fontSize:'0.85rem', color:'#cbd5e1'}}>{entry.desc}</div>
+                                                </div>
+                                                <button onClick={() => {const newHist = [...buffHistory]; newHist.splice(idx, 1); setBuffHistory(newHist);}} className="btn" style={{color:'#64748b', padding:'4px'}}><Icons.Trash /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    <footer style={{position: 'fixed', bottom: 0, width: '100%', background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(4px)', borderTop: '1px solid #334155', padding: '8px', textAlign: 'center', fontSize: '0.8rem', color: '#64748b'}}>
+                        <div className="container flex justify-between items-center" style={{padding: '0 16px'}}>
+                            <span>数据自动保存中...</span>
+                            <button onClick={resetAll} className="btn" style={{fontSize: '0.8rem', color: '#94a3b8'}}><Icons.Refresh /> 重置数据</button>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        function ShopItem({ item, buyItem, coins }) {
+            const canAfford = coins >= item.price;
+            return (
+                <div onClick={() => buyItem(item)} className="card" style={{
+                    cursor: 'pointer', 
+                    opacity: canAfford ? 1 : 0.6,
+                    borderColor: canAfford ? '' : 'transparent',
+                    backgroundColor: canAfford ? '' : '#0f172a'
+                }}>
+                    <div className="flex justify-between items-center mb-1">
+                        <span style={{fontWeight:'bold', color: item.type === 'buff' ? '#d8b4fe' : item.type === 'equip' ? '#93c5fd' : '#e2e8f0'}}>{item.name}</span>
+                        <span style={{color: '#facc15', fontWeight: 'bold'}}>{item.price} 币</span>
+                    </div>
+                    <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>{item.effect}</div>
+                </div>
+            )
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
