@@ -69,6 +69,19 @@
     </div>
 
     <script type="text/babel">
+        // 如果使用 ?clearState=1 打开页面，则一次性清除本地保存的状态（用于恢复因状态损坏导致的问题）
+        (function(){
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('clearState') === '1') {
+                    localStorage.removeItem('dnd-arena-data');
+                    const u = new URL(window.location.href);
+                    u.searchParams.delete('clearState');
+                    window.location.replace(u.toString());
+                }
+            } catch(e) { /* ignore */ }
+        })();
+
         const { useState, useEffect } = React;
 
         // --- 本地化图标组件 (原生 Emoji 版) ---
@@ -87,34 +100,54 @@
         const ROUND_1_BUDGET = 300;
         const ROUND_2_BASE_BUDGET = 1800;
 
+        // --- 第一轮（CR ≤ 1）—— 百鬼夜行（已按用户指定更新） ---
         const MONSTERS_R1 = [
-            { id: 'kobold', name: '狗头人', cr: '1/8', price: 25, desc: '群体战术，人海战专家' },
-            { id: 'goblin', name: '哥布林', cr: '1/4', price: 50, desc: '附赠撤离/隐藏，游击专家' },
-            { id: 'wolf', name: '狼', cr: '1/4', price: 50, desc: '群体战术，击倒特效' },
-            { id: 'zombie', name: '丧尸', cr: '1/4', price: 50, desc: '缓慢不死生物，难以被快速击杀' },
-            { id: 'orc', name: '兽人', cr: '1/2', price: 100, desc: '附赠突进，爆发伤害高' },
-            { id: 'ice_mephit', name: '冰魔蝠', cr: '1/2', price: 150, desc: '飞行，寒冷吐息，死亡时爆炸' },
-            { id: 'scout', name: '斥候', cr: '1/2', price: 100, desc: '高移动力，侦察优势，远程攻击' },
-            { id: 'devil_dog', name: '侍僧', cr: '1/2', price: 150, desc: '治疗能力' },
-            { id: 'hobgoblin', name: '大地精', cr: '1/2', price: 100, desc: '高AC，盟友在此额外伤害' },
-            { id: 'brown_bear', name: '棕熊', cr: '1', price: 200, desc: '多重攻击，血量厚' },
-            { id: 'dire_wolf', name: '恐狼', cr: '1', price: 200, desc: '升级版狼群领袖' },
-            { id: 'brass_dragon_wyrmling', name: '黄铜龙雏龙', cr: '1', price: 300, desc: '自带吐息和高额爪击伤害，对单对群都比较优秀' },
+            { id: 'kobold', name: '狗头人', cr: '1/8', price: 25, desc: '群体战术（有盟友在旁获得优势），极其廉价的人海战专家' },
+            { id: 'goblin', name: '哥布林', cr: '1/4', price: 50, desc: '附赠动作可撤离/隐藏，适合拉扯风筝的游击专家' },
+            { id: 'wolf', name: '狼', cr: '1/4', price: 50, desc: '自带群体战术，咬中敌人附带力量豁免，失败即被击倒' },
+            { id: 'zombie', name: '丧尸', cr: '1/4', price: 50, desc: '自带复活，比较能抗' },
+            { id: 'orc', name: '兽人', cr: '1/2', price: 100, desc: '附赠动作可向敌人突进，大斧爆发伤害极高的狂战士' },
+            { id: 'scout', name: '斥候', cr: '1/2', price: 100, desc: '双重攻击，远近皆可，万金油' },
+            { id: 'hobgoblin', name: '大地精', cr: '1/2', price: 100, desc: '高AC，有盟友在身边时，命中附带巨额 2d6 额外伤害的团队核心' },
+            { id: 'ice_bat', name: '冰魔蝠', cr: '1/2', price: 150, desc: '拥有吐息与自爆，可搅乱敌人阵型' },
+            { id: 'devil_dog', name: '侍僧', cr: '1/2', price: 150, desc: '血量较低，但拥有治疗能力' },
+            { id: 'brown_bear', name: '棕熊', cr: '1', price: 200, desc: '一回合撕咬+爪击两段攻击，碾压低级兵的野兽之王' },
+            { id: 'dire_wolf', name: '恐狼', cr: '1', price: 200, desc: '带群体战术和高成功率的击倒特效，升级版狼群领袖' },
+            { id: 'brass_dragon_wyrmling', name: '黄铜龙雏龙', cr: '1', price: 250, desc: '自带吐息和高额爪击伤害，对单对群都比较优秀' },
         ];
         const MONSTERS_R2 = [
-            { id: 'ogre', name: '食人魔', cr: '2', price: 450, desc: '高伤肉盾' },
-            { id: 'gargoyle', name: '石像鬼', cr: '2', price: 450, desc: '非魔法抗性，飞行' },
-            { id: 'knight', name: '骑士', cr: '3', price: 700, desc: '高AC，领导力光环' },
+            { id: 'ogre', name: '食人魔', cr: '2', price: 450, desc: '59血单发大棒高伤，简单粗暴的沙包肉盾' },
+            { id: 'gargoyle', name: '石像鬼', cr: '2', price: 450, desc: '免疫毒素，且对非魔法武器造成的伤害拥有全面抗性的空中单位' },
+            { id: 'knight', name: '骑士', cr: '3', price: 700, desc: '超高AC，自带”领导力”光环（范围内盟友攻防骰+1d4）的团队领袖' },
             { id: 'basilisk', name: '石化蜥蜴', cr: '3', price: 700, desc: '既有近战能力又具威慑力的控场型怪物' },
             { id: 'owlbear', name: '枭熊', cr: '3', price: 700, desc: '强悍的近战多段攻击爆发与极高的生命值，纯粹的伤害输出' },
             { id: 'manticore', name: '蝎尾狮', cr: '3', price: 700, desc: '飞行单位，无视近战地形，每回合射出 3发尾刺 压制全场的远程杀手' },
             { id: 'ettin', name: '双头巨人', cr: '4', price: 1100, desc: '双重攻击极强，且双脑让它面对控场法术具有豁免优势' },
             { id: 'red_dragon_wyrmling', name: '红龙幼龙', cr: '4', price: 1100, desc: '飞行单位，拥有高爆发火焰喷吐的范围压制能力，机动性与AOE兼具的战场清场者' },
-            { id: 'high_fae_warlock', name: '至高妖精邪术师', cr: '4', price: 1100, desc: '擅长魅惑与干扰敌方行动，依靠控制与战术节奏掌控战局的法术核心' },
-            { id: 'earth_ele', name: '土元素', cr: '5', price: 1800, desc: '极高防御，穿墙突袭' },
+            { id: 'archfey_sorcerer', name: '至高妖精邪术师', cr: '4', price: 1100, desc: '擅长魅惑与干扰敌方行动，依靠控制与战术节奏掌控战局的法术核心' },
             { id: 'gladiator', name: '角斗士', cr: '5', price: 1800, desc: '人形兵器。一回合三次攻击，附带招架提AC和盾击的武术大师' },
             { id: 'troll', name: '巨魔', cr: '5', price: 1800, desc: '拥有强大再生能力，肉墙' },
             { id: 'enchanter', name: '惑控师', cr: '5', price: 2000, desc: '支配与定身关键目标，通过强力单体控制改变战局走向' },
+        ];
+
+        // --- 新增命名池（玩家选择项） ---
+        const MONSTERS_R1_SONGCAI = [
+            { id: 'dijing', name: '地精', cr: '1/4', price: 50, desc: '廉价多面手' },
+            { id: 'zombie', name: '丧尸', cr: '1/4', price: 50, desc: '廉价前排（可再生）' },
+            { id: 'devil_dog', name: '侍僧', cr: '1/4', price: 50, desc: '廉价辅助' },
+            { id: 'apprentice_mage', name: '学徒法师', cr: '1/4', price: 50, desc: '战术单位' },
+            { id: 'orc', name: '兽人', cr: '1/2', price: 100, desc: '前排战士' },
+            { id: 'scout', name: '斥候', cr: '1/2', price: 100, desc: '远程骚扰单位' },
+            { id: 'riding_wolf', name: '坐狼', cr: '1/2', price: 100, desc: '机动战士' },
+            { id: 'gnoll', name: '豺狼人', cr: '1/2', price: 100, desc: '游击单位' },
+            { id: 'copper_dragon_wyrmling', name: '赤铜龙雏龙', cr: '1', price: 250, desc: '战争兵器' },
+            { id: 'brass_dragon_wyrmling', name: '黄铜龙雏龙', cr: '1', price: 250, desc: '战争兵器' },
+            { id: 'brown_bear', name: '棕熊', cr: '1', price: 200, desc: '完美战士' },
+            { id: 'animated_armor', name: '活化盔甲', cr: '1', price: 200, desc: '城墙' },
+        ];
+        const MONSTERS_R2_FUDAO = [
+            // 福到临头偏向功能/法术/核心单位（同步为 MONSTERS_R2 中存在的 id）
+            ...MONSTERS_R2.filter(m => ['archfey_sorcerer','red_dragon_wyrmling','troll','gladiator','enchanter'].includes(m.id))
         ];
         const SHOP_ITEMS_R1 = [
             { id: 'lucky', name: '大吉大利', price: 8, type: 'buff', effect: '下一轮XP预算+400', oneTime: true },
@@ -158,6 +191,25 @@
             { roll: 12, name: '财神到', effect: '获 10 币，重抽本表' },
         ];
 
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { error: null, info: null }; }
+            componentDidCatch(error, info) { this.setState({ error, info }); console.error('ErrorBoundary caught', error, info); }
+            render() {
+                if (this.state.error) {
+                    return (
+                        <div style={{padding:20, background:'#2b1a1a', color:'#fca5a5', border:'2px solid #b91c1c', borderRadius:8}}>
+                            <h2>运行时错误（ErrorBoundary）</h2>
+                            <div style={{whiteSpace:'pre-wrap', fontFamily:'monospace', fontSize:'0.9rem'}}>{String(this.state.error)}</div>
+                            <div style={{marginTop:12}}>
+                                <button className="btn" onClick={() => { localStorage.removeItem('dnd-arena-data'); window.location.reload(); }}>清除本地数据并重载</button>
+                            </div>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
         function App() {
             const [round, setRound] = useState(1);
             const [coins, setCoins] = useState(0);
@@ -171,6 +223,12 @@
             const [exchangeCap, setExchangeCap] = useState(10); // 兑换上限（币）
             const [coinsToExchange, setCoinsToExchange] = useState(1);
             const [recycledXP, setRecycledXP] = useState(0); // 已回收的XP（防重复）
+
+            // --- v2.0: 怪物池选择（玩家在进入时选择）
+            const [playerPoolChoice, setPlayerPoolChoice] = useState(round === 1 ? '百鬼夜行' : '诸神黄昏');
+            const [activePool, setActivePool] = useState(round === 1 ? '百鬼夜行' : '诸神黄昏');
+            const [gameStarted, setGameStarted] = useState(false);
+            const [showPoolModal, setShowPoolModal] = useState(false);
 
             useEffect(() => {
                 const savedData = localStorage.getItem('dnd-arena-data');
@@ -188,16 +246,39 @@
                         setExchangeCap(parsed.exchangeCap || 10);
                         setCoinsToExchange(parsed.coinsToExchange || 1);
                         setRecycledXP(parsed.recycledXP || 0);
+                        // 恢复池子选择与开始状态
+                        setPlayerPoolChoice(parsed.playerPoolChoice || (parsed.round === 1 ? '百鬼夜行' : '诸神黄昏'));
+                        setActivePool(parsed.activePool || (parsed.round === 1 ? '百鬼夜行' : '诸神黄昏'));
+                        setGameStarted(parsed.gameStarted || false);
                     } catch (e) { console.error("Load failed", e); }
                 }
             }, []);
 
+            // 切换轮次时恢复默认池，并在已开始游戏时弹出池子选择
             useEffect(() => {
-                const data = { round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP };
-                localStorage.setItem('dnd-arena-data', JSON.stringify(data));
-            }, [round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP]);
+                const defaultPool = round === 1 ? '百鬼夜行' : '诸神黄昏';
+                setPlayerPoolChoice(defaultPool);
+                setActivePool(defaultPool);
+                if (gameStarted) setShowPoolModal(true);
+            }, [round, gameStarted]);
 
-            const getMonsterList = () => round === 1 ? MONSTERS_R1 : [...MONSTERS_R1, ...MONSTERS_R2];
+            useEffect(() => {
+                const data = { round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP, playerPoolChoice, activePool, gameStarted };
+                localStorage.setItem('dnd-arena-data', JSON.stringify(data));
+            }, [round, coins, army, inventory, xpBonus, buffHistory, drawnCards, exchangeXp, exchangeCap, coinsToExchange, recycledXP, playerPoolChoice, activePool, gameStarted]);
+
+            const getMonsterList = () => {
+                // 根据当前轮次与已决池子返回怪物池
+                if (round === 1) {
+                    if (activePool === '送财童子') return MONSTERS_R1_SONGCAI;
+                    return MONSTERS_R1; // 百鬼夜行（默认）
+                }
+                // 第二轮
+                if (activePool === '福到临头') return MONSTERS_R2_FUDAO;
+                if (activePool === '诸神黄昏') return MONSTERS_R2;
+                // 若未明确，返回全部高级池（方便快速浏览）
+                return [...MONSTERS_R1, ...MONSTERS_R2];
+            };
             const getCostForNext = (monsterId, currentCount) => {
                 const monster = getMonsterList().find(m => m.id === monsterId);
                 if (!monster) return 0;
@@ -247,6 +328,8 @@
                 }
                 setDrawnCards(picks);
             };
+
+
             const sellDrawnCard = (index) => {
                 const card = drawnCards[index];
                 if (!card) return;
@@ -350,6 +433,10 @@
                             <div className="slide-in">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 style={{margin:0, fontSize: '1.25rem', color: '#fef08a'}}>怪物卡池</h2>
+                                    <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                                        <div style={{fontSize:'0.85rem', color:'#94a3b8', marginRight:'8px'}}>当前池子：</div>
+                                        <div style={{backgroundColor:'#0f172a', padding:'4px 10px', borderRadius:'8px', border:'1px solid #334155', color:'#facc15', fontWeight:'bold'}}>{activePool}</div>
+                                    </div>
                                     {round === 1 && (
                                         <button onClick={() => { setRound(2); setCoins(coins + 5); }} className="btn" style={{border: '1px solid #a855f7', color: '#d8b4fe'}}>
                                             晋级到第二轮 &gt;
@@ -362,12 +449,37 @@
                                     )}
                                 </div>
 
+                                {/* 初始开始按钮（覆盖层） */}
+                                {!gameStarted && (
+                                    <div style={{position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', zIndex:80}}>
+                                        <div className="card" style={{width:420, textAlign:'center'}}>
+                                            <h2 style={{marginTop:0}}>欢迎 — 新春怪物角斗场</h2>
+                                            <p style={{color:'#94a3b8'}}>点击下方开始游戏并选择第一轮怪物池。</p>
+                                            <button className="btn btn-primary" onClick={() => { setGameStarted(true); setShowPoolModal(true); }}>开始游戏</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 进入轮次时通过弹窗选择怪物池（玩家选择） */}
+                                {showPoolModal && (
+                                    <div style={{position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', zIndex:70}}>
+                                        <div className="card" style={{width:480, maxWidth:'95%'}}>
+                                            <h3 style={{marginTop:0}}>选择怪物池 — 第 {round} 轮</h3>
+                                            <p style={{color:'#94a3b8'}}>请选择本轮使用的怪物池；工具将只显示所选池的怪物。</p>
+                                            <div style={{display:'flex', gap:'8px', marginTop:12}}>
+                                                <button className="btn btn-primary" onClick={() => { const p = round===1? '百鬼夜行' : '诸神黄昏'; setPlayerPoolChoice(p); setActivePool(p); setShowPoolModal(false); }}>{round===1? '百鬼夜行' : '诸神黄昏'}</button>
+                                                <button className="btn" onClick={() => { const p = round===1? '送财童子' : '福到临头'; setPlayerPoolChoice(p); setActivePool(p); setShowPoolModal(false); }}>{round===1? '送财童子' : '福到临头'}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* 抽怪物卡 区域 */}
                                 <div className="card" style={{marginBottom:'12px'}}>
                                     <div className="flex items-center justify-between" style={{marginBottom:'8px'}}>
                                         <div>
                                             <strong>抽怪物卡</strong>
-                                            <div style={{fontSize:'0.85rem', color:'#94a3b8'}}>抽取 3 张怪物卡：可卖卡(+2 币) 或 直接购买</div>
+                                            <div style={{fontSize:'0.85rem', color:'#94a3b8'}}>抽取 3 张怪物卡（来自：<span style={{color:'#facc15', fontWeight:'bold'}}>{activePool}</span>）：可卖卡(+2 币) 或 直接购买</div>
                                         </div>
                                         <div style={{display:'flex', gap:'8px'}}>
                                             <button className="btn btn-primary" onClick={() => drawMonsters()}>抽取 3 张</button>
@@ -547,7 +659,14 @@
                     <footer style={{position: 'fixed', bottom: 0, width: '100%', background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(4px)', borderTop: '1px solid #334155', padding: '8px', textAlign: 'center', fontSize: '0.8rem', color: '#64748b'}}>
                         <div className="container flex justify-between items-center" style={{padding: '0 16px'}}>
                             <span>数据自动保存中...</span>
-                            <button onClick={resetAll} className="btn" style={{fontSize: '0.8rem', color: '#94a3b8'}}><Icons.Refresh /> 重置数据</button>
+                            <div style={{display:'flex', gap: '8px', alignItems:'center'}}>
+                                <button onClick={resetAll} className="btn" style={{fontSize: '0.8rem', color: '#94a3b8'}}><Icons.Refresh /> 重置数据</button>
+                                <details style={{color:'#94a3b8'}}>
+                                    <summary style={{cursor:'pointer', fontSize:'0.85rem'}}>⚙️ 调试信息</summary>
+                                    <pre style={{whiteSpace:'pre-wrap', color:'#cbd5e1', maxHeight: '160px', overflow:'auto', textAlign:'left', margin:'8px 0'}}>{localStorage.getItem('dnd-arena-data') || '空'}</pre>
+                                    <button className="btn" onClick={() => { localStorage.removeItem('dnd-arena-data'); window.location.reload(); }}>清除 localStorage 并重载</button>
+                                </details>
+                            </div>
                         </div>
                     </footer>
                 </div>
@@ -573,7 +692,7 @@
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
 </body>
 </html>
