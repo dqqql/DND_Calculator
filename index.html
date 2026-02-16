@@ -146,8 +146,18 @@
             { id: 'animated_armor', name: '活化盔甲', cr: '1', price: 200, desc: '城墙' },
         ];
         const MONSTERS_R2_FUDAO = [
-            // 福到临头偏向功能/法术/核心单位（同步为 MONSTERS_R2 中存在的 id）
-            ...MONSTERS_R2.filter(m => ['archfey_sorcerer','red_dragon_wyrmling','troll','gladiator','enchanter'].includes(m.id))
+            { id: 'ogre', name: '食人魔', cr: '2', price: 450, desc: '中坚单位：高伤肉盾' },
+            { id: 'wuyuanzong', name: '五元冢', cr: '2', price: 450, desc: '功能前排，擅长分担并保护队形' },
+            { id: 'priest', name: '祭司', cr: '2', price: 450, desc: '功能辅助：治疗/祝福/控制性法术' },
+            { id: 'yankee_warrior', name: '吉斯洋基武者', cr: '3', price: 700, desc: '超级战士，爆发与耐久兼备' },
+            { id: 'veteran', name: '老兵', cr: '3', price: 700, desc: '中坚单位，稳定输出与耐久' },
+            { id: 'owlbear', name: '枭熊', cr: '3', price: 700, desc: '中坚单位：稳定输出与耐久' },
+            { id: 'illusionist', name: '幻术师', cr: '3', price: 700, desc: '战术单位：扰乱与位移的法术专家' },
+            { id: 'terror_armor', name: '恐怖铠甲', cr: '4', price: 1100, desc: '战术单位：拥有威吓/减速等控制效果' },
+            { id: 'red_dragon_wyrmling', name: '红龙雏龙', cr: '4', price: 1100, desc: '战争兵器：火焰喷吐+飞行' },
+            { id: 'orc_officer', name: '兽人军官', cr: '4', price: 1100, desc: '功能战士：提供战术光环与命令' },
+            { id: 'troll', name: '巨魔', cr: '5', price: 1800, desc: '超级战士：强力再生肉墙' },
+            { id: 'wizard', name: '魔法师', cr: '5', price: 2000, desc: '战术单位：强力控制/爆发法术' },
         ];
         const SHOP_ITEMS_R1 = [
             { id: 'lucky', name: '大吉大利', price: 8, type: 'buff', effect: '下一轮XP预算+400', oneTime: true },
